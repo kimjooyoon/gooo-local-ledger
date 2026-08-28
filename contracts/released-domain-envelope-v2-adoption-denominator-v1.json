@@ -1,0 +1,37 @@
+{
+  "schema": "gooo/local-ledger/released-domain-envelope-v2-adoption-denominator/v1",
+  "version": 1,
+  "total": 12,
+  "proof_choices": ["FOUNDATION", "COHERENCE", "REGRESSION"],
+  "indicator_classes": ["DRIVER", "OUTCOME", "GUARDRAIL"],
+  "expectations": {
+    "product_projection": 1,
+    "typed_relations": 8,
+    "envelope_files": 8,
+    "conformer_checks": 10,
+    "source_replay_comparisons": 1,
+    "file_replay_comparisons": 8,
+    "unknown_cases": 2,
+    "unknown_fields": 6,
+    "unknown_direct_cases": 1,
+    "unknown_dependency_cases": 1,
+    "refuted_counterexample_reports": 2,
+    "normal_paths": 1,
+    "refuted_paths": 1,
+    "source_project_plan_artifacts": 1
+  },
+  "cells": [
+    {"id":"CORE_RELEASE","activity":"ObserveCurrentCoreRelease","indicator_class":"DRIVER","proof_choice":"FOUNDATION","stage":"CORE_RELEASE","step":"OBSERVE_PINNED_CORE_RELEASE","reason":"PINNED_CORE_RELEASE_INVALID","next_operation":"RESTORE_PINNED_CORE_RELEASE","depends_on":[]},
+    {"id":"INTERCHANGE_SPEC_RELEASE","activity":"ObserveInterchangeSpecRelease","indicator_class":"DRIVER","proof_choice":"FOUNDATION","stage":"INTERCHANGE_SPEC_RELEASE","step":"OBSERVE_PINNED_KIT_RELEASE","reason":"PINNED_INTERCHANGE_SPEC_RELEASE_INVALID","next_operation":"RESTORE_PINNED_INTERCHANGE_SPEC_RELEASE","depends_on":[]},
+    {"id":"LOCAL_RELEASE","activity":"ObserveLocalProductRelease","indicator_class":"OUTCOME","proof_choice":"FOUNDATION","stage":"LOCAL_RELEASE","step":"OBSERVE_RELEASED_PROJECT_PLAN","reason":"RELEASED_PROJECT_PLAN_INVALID","next_operation":"RESTORE_RELEASED_PROJECT_PLAN","depends_on":[]},
+    {"id":"META_ACTIVITY_AUTHORITY","activity":"ObserveMetaActivityAuthority","indicator_class":"GUARDRAIL","proof_choice":"FOUNDATION","stage":"META_ACTIVITY_AUTHORITY","step":"OBSERVE_CORE_ACTIVITY_RECEIPTS","reason":"CORE_ACTIVITY_AUTHORITY_INVALID","next_operation":"RESTORE_CORE_ACTIVITY_RECEIPTS","depends_on":["CORE_RELEASE"]},
+    {"id":"LOCAL_DEPENDENCY_SOURCE","activity":"ObserveLocalDependencySource","indicator_class":"DRIVER","proof_choice":"COHERENCE","stage":"LOCAL_DEPENDENCY_SOURCE","step":"OBSERVE_TYPED_DEPENDENCY_SOURCE","reason":"LOCAL_DEPENDENCY_SOURCE_INVALID","next_operation":"RESTORE_TYPED_DEPENDENCY_SOURCE","depends_on":["LOCAL_RELEASE"]},
+    {"id":"PRODUCT_PROJECTION","activity":"ProjectProductEnvelope","indicator_class":"OUTCOME","proof_choice":"COHERENCE","stage":"PRODUCT_PROJECTION","step":"PROJECT_LOCAL_RELEASED_DEPENDENCIES","reason":"PRODUCT_PROJECTION_INVALID","next_operation":"RESTORE_PRODUCT_PROJECTION","depends_on":["LOCAL_RELEASE","META_ACTIVITY_AUTHORITY","LOCAL_DEPENDENCY_SOURCE"]},
+    {"id":"EIGHT_FILE_ENVELOPE","activity":"PublishEightFileEnvelope","indicator_class":"OUTCOME","proof_choice":"COHERENCE","stage":"ENVELOPE_GENERATION","step":"GENERATE_EIGHT_FILE_ENVELOPE","reason":"EIGHT_FILE_ENVELOPE_INVALID","next_operation":"REGENERATE_EIGHT_FILE_ENVELOPE","depends_on":["PRODUCT_PROJECTION","INTERCHANGE_SPEC_RELEASE"]},
+    {"id":"READ_ONLY_CONFORMANCE","activity":"VerifyReadOnlyConformance","indicator_class":"GUARDRAIL","proof_choice":"COHERENCE","stage":"READ_ONLY_CONFORMANCE","step":"VERIFY_KIT_CONFORMER","reason":"READ_ONLY_CONFORMANCE_INVALID","next_operation":"RESTORE_READ_ONLY_CONFORMANCE","depends_on":["EIGHT_FILE_ENVELOPE"]},
+    {"id":"UNKNOWN_CAUSALITY","activity":"PreserveUnknownCausality","indicator_class":"GUARDRAIL","proof_choice":"REGRESSION","stage":"UNKNOWN_CAUSALITY","step":"OBSERVE_UNKNOWN_DEPENDENCY_PATH","reason":"UNKNOWN_CAUSALITY_INVALID","next_operation":"RESTORE_UNKNOWN_CAUSALITY","depends_on":["READ_ONLY_CONFORMANCE"]},
+    {"id":"DETERMINISTIC_REPLAY","activity":"VerifyDeterministicReplay","indicator_class":"DRIVER","proof_choice":"REGRESSION","stage":"DETERMINISTIC_REPLAY","step":"COMPARE_SOURCE_AND_FILE_REPLAY","reason":"DETERMINISTIC_REPLAY_INVALID","next_operation":"RESTORE_DETERMINISTIC_REPLAY","depends_on":["PRODUCT_PROJECTION","EIGHT_FILE_ENVELOPE"]},
+    {"id":"REFUTED_COUNTEREXAMPLES","activity":"RefuteCounterexamples","indicator_class":"OUTCOME","proof_choice":"REGRESSION","stage":"REFUTED_COUNTEREXAMPLES","step":"OBSERVE_FAIL_CLOSED_COUNTEREXAMPLES","reason":"COUNTEREXAMPLES_NOT_REFUTED","next_operation":"RESTORE_FAIL_CLOSED_COUNTEREXAMPLES","depends_on":["META_ACTIVITY_AUTHORITY"]},
+    {"id":"AUTHORITY_BOUNDARY","activity":"PreserveAuthorityBoundary","indicator_class":"GUARDRAIL","proof_choice":"REGRESSION","stage":"AUTHORITY_BOUNDARY","step":"OBSERVE_READ_ONLY_AUTHORITY","reason":"AUTHORITY_BOUNDARY_VIOLATED","next_operation":"REMOVE_MUTATION_AUTHORITY","depends_on":["META_ACTIVITY_AUTHORITY"]}
+  ]
+}

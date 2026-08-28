@@ -1,0 +1,29 @@
+package releaseddomainenvelopev2observation
+namespace releaseddomainenvelopev2observation
+
+entity CurrentCoreReleaseReceipt id "local://released-domain-envelope-v2/observation/current-core-release"
+entity InterchangeSpecReleaseReceipt id "local://released-domain-envelope-v2/observation/interchange-spec-release"
+entity LocalProductReleaseReceipt id "local://released-domain-envelope-v2/observation/local-product-release"
+entity MetaActivityAuthorityReceipt id "local://released-domain-envelope-v2/observation/meta-activity-authority"
+entity LocalDependencySourceReceipt id "local://released-domain-envelope-v2/observation/local-dependency-source"
+entity ProductProjectionReceipt id "local://released-domain-envelope-v2/observation/product-projection"
+entity EightFileEnvelopeReceipt id "local://released-domain-envelope-v2/observation/eight-file-envelope"
+entity ReadOnlyConformanceReceipt id "local://released-domain-envelope-v2/observation/read-only-conformance"
+entity UnknownCausalityReceipt id "local://released-domain-envelope-v2/observation/unknown-causality"
+entity DeterministicReplayReceipt id "local://released-domain-envelope-v2/observation/deterministic-replay"
+entity RefutedCounterexamplesReceipt id "local://released-domain-envelope-v2/observation/refuted-counterexamples"
+entity AuthorityBoundaryReceipt id "local://released-domain-envelope-v2/observation/authority-boundary"
+entity EnvelopeCell id "local://released-domain-envelope-v2/cell"
+
+activity ObserveCurrentCoreRelease(CurrentCoreReleaseReceipt) -> EnvelopeCell
+activity ObserveInterchangeSpecRelease(InterchangeSpecReleaseReceipt) -> EnvelopeCell
+activity ObserveLocalProductRelease(LocalProductReleaseReceipt) -> EnvelopeCell
+activity ObserveMetaActivityAuthority(MetaActivityAuthorityReceipt) -> EnvelopeCell
+activity ObserveLocalDependencySource(LocalDependencySourceReceipt) -> EnvelopeCell
+activity ProjectProductEnvelope(ProductProjectionReceipt) -> EnvelopeCell
+activity PublishEightFileEnvelope(EightFileEnvelopeReceipt) -> EnvelopeCell
+activity VerifyReadOnlyConformance(ReadOnlyConformanceReceipt) -> EnvelopeCell
+activity PreserveUnknownCausality(UnknownCausalityReceipt) -> EnvelopeCell
+activity VerifyDeterministicReplay(DeterministicReplayReceipt) -> EnvelopeCell
+activity RefuteCounterexamples(RefutedCounterexamplesReceipt) -> EnvelopeCell
+activity PreserveAuthorityBoundary(AuthorityBoundaryReceipt) -> EnvelopeCell
