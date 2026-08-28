@@ -15,6 +15,13 @@ nodes. FOUNDATION identifies authority and observed facts, COHERENCE checks
 required relationships, and REGRESSION requires runtime/resource/effect/user
 observations. These are proof choices rather than scores.
 
+The standalone readiness policy is part of project authority. It declares a
+read-only effect, zero cross-project branch inputs, zero external required
+gates, zero required local test executions, and no root README requirement.
+The external-gate and repository-write indicators are both bound to the
+`ObserveReadOnlyEffect` Gooo activity; an unbound policy number cannot close
+the authority cell.
+
 ## Inventory semantics
 
 Files and descendant directories are counted under the candidate root. Go and
@@ -42,3 +49,5 @@ sample cell but a smaller number is not automatically called an improvement.
 
 Local Ledger does not claim build success, runtime health, source-span binding,
 or deployment readiness. It does not generate or repair missing evidence.
+An immutable released CLI asset is an observed input, not a live cross-project
+readiness gate.

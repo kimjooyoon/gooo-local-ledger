@@ -1,0 +1,20 @@
+{
+  "schema": "gooo/local-ledger/readiness-policy/v1",
+  "id": "gooo://policy/local-ledger-readiness-v1",
+  "effect": "READ_ONLY",
+  "external_required_gates": 0,
+  "cross_project_branch_inputs": 0,
+  "root_readme_required": false,
+  "local_tests_required": 0,
+  "metric_bindings": {
+    "external_required_gates": "ObserveReadOnlyEffect",
+    "repository_writes": "ObserveReadOnlyEffect",
+    "release_decision": "CloseReleaseDecision"
+  },
+  "non_claims": [
+    "BUILD_SUCCESS",
+    "RUNTIME_HEALTH",
+    "DEPLOYMENT_READINESS",
+    "CROSS_PROJECT_SEMANTIC_EQUIVALENCE"
+  ]
+}

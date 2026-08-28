@@ -91,7 +91,10 @@ jobs:
           bash scripts/evaluate.sh "$GITHUB_WORKSPACE" "$candidate" "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/replay.json" "$SUBJECT_SHA" ready
           cmp -s "$RUNNER_TEMP/ready.json" "$RUNNER_TEMP/replay.json"
           jq -e '.decision=="RELEASE_READY" and .summary=={total:12,closed:12,unknown:0,refuted:0,repository_writes:0} and
-            .authority.activity_bindings==12 and ([.proofs[]|select(.closed==.total)]|length)==3' "$RUNNER_TEMP/ready.json" >/dev/null
+            .authority.activity_bindings==12 and .authority.effect=="READ_ONLY" and .authority.external_required_gates==0 and
+            .authority.cross_project_branch_inputs==0 and .authority.root_readme_required==false and .authority.local_tests_required==0 and
+            ([.proofs[]|select(.closed==.total)]|length)==3 and
+            ([.indicators[]|select(.id=="gooo.metric.local-ledger.external-required-gates.v1" and .value==0 and .total==0 and .activity=="ObserveReadOnlyEffect" and .state=="SATISFIED")]|length)==1' "$RUNNER_TEMP/ready.json" >/dev/null
 
           cp -R "$candidate" "$RUNNER_TEMP/missing-runbook"
           rm "$RUNNER_TEMP/missing-runbook/docs/runbook.md"
@@ -114,6 +117,8 @@ jobs:
             jq -r '"- decision: \(.decision)",
               "- readiness: \(.summary.closed)/\(.summary.total) CLOSED; UNKNOWN \(.summary.unknown); REFUTED \(.summary.refuted)",
               (.indicators[] | if has("total") then "- \(.id): \(.value)/\(.total) \(.unit) [\(.state)]" else "- \(.id): \(.value) \(.unit) [\(.state)]" end),
+              "- authority effect: \(.authority.effect)",
+              "- external required gates: \(.authority.external_required_gates)",
               "- deterministic replay: true",
               "- local test executions: 0"' "$RUNNER_TEMP/ready.json"
             echo

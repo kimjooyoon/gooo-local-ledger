@@ -3,6 +3,7 @@
   "id": "local://project/release-candidate",
   "name": "release-candidate",
   "authority": "project.gooo",
+  "readiness_policy": "gooo://policy/local-ledger-readiness-v1",
   "source_paths": ["project.gooo", "src/main.go"],
   "required_paths": ["project.gooo", "src/main.go", "docs/overview.md", "docs/runbook.md", "CHANGELOG.md"],
   "documentation": "docs/overview.md",
