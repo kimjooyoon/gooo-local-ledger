@@ -39,8 +39,8 @@ jq -S -n --slurpfile denominator "$denominator" --slurpfile core "$core_receipts
     else null end;
   def direct($cell):
     (normalized_core($cell)) as $cr |
-    if $cr.state=="REFUTED" then ($cell|strip)+{state:"REFUTED",resolution:"EXACT",reason:$cr.reason,next_operation:$cr.next_operation,unknown_class:null,blocked_by:[],core_resolution:$cr}
-    elif $cr.state=="UNKNOWN" then ($cell|strip)+{state:"UNKNOWN",resolution:"PREREQUISITE_CLASS",reason:$cr.reason,next_operation:$cr.next_operation,unknown_class:$cr.unknown_class,blocked_by:[],core_resolution:$cr}
+    if $cr.state=="REFUTED" then ($cell|strip)+{state:"REFUTED",resolution:"EXACT",stage:$cr.stage,step:$cr.step,reason:$cr.reason,next_operation:$cr.next_operation,unknown_class:null,blocked_by:[],core_resolution:$cr}
+    elif $cr.state=="UNKNOWN" then ($cell|strip)+{state:"UNKNOWN",resolution:"PREREQUISITE_CLASS",stage:$cr.stage,step:$cr.step,reason:$cr.reason,next_operation:$cr.next_operation,unknown_class:$cr.unknown_class,blocked_by:[],core_resolution:$cr}
     elif fact($cell.id)==true then ($cell|strip)+{state:"CLOSED",resolution:"EXACT",reason:$cell.closed_reason,next_operation:"NONE",unknown_class:null,blocked_by:[],core_resolution:$cr}
     elif fact($cell.id)==null then ($cell|strip)+{state:"UNKNOWN",resolution:"PREREQUISITE_CLASS",reason:$cell.unknown_reason,next_operation:$cell.next_operation,unknown_class:"OBSERVATION_MISSING",blocked_by:[],core_resolution:$cr}
     else ($cell|strip)+{state:"REFUTED",resolution:"EXACT",reason:$cell.refuted_reason,next_operation:$cell.restore_operation,unknown_class:null,blocked_by:[],core_resolution:$cr} end;
