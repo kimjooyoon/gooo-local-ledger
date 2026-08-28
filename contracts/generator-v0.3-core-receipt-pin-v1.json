@@ -2,12 +2,12 @@
   "schema": "gooo/local-ledger/generator-core-receipt-pin/v1",
   "generator": {
     "repository": "kimjooyoon/gooo-evidence-generator",
-    "tag": "v0.3.0-dev",
-    "tag_object_sha": "cc82bce7373f3ecd647a345e78ab0e8b3305ccd9",
-    "target_commit_sha": "4745976cb7e99586bb322b3286023dd34718a81a",
+    "tag": "v0.3.1-dev",
+    "tag_object_sha": "550e973e56f5c7921405fcc64893bf8637acfbcd",
+    "target_commit_sha": "c8bb802bea7dd2fd04fa1269b2ec435498edaa9c",
     "portable_asset": {
-      "name": "gooo-evidence-generator-portable-v0.3.0-dev.tar.gz",
-      "sha256": "dd6f53c93f8ddc04f08f7faa565fa77889ac3f4c4c2cd5563bd430b9ba94e399"
+      "name": "gooo-evidence-generator-portable-v0.3.1-dev.tar.gz",
+      "sha256": "4978c7719291317d4df74895b7b554f2b16698df9ff249d5f6300d37987e654e"
     }
   },
   "core": {
@@ -25,6 +25,7 @@
     "graph_role": "DERIVED_IDS_AND_DIGESTS_ONLY",
     "meta_receipts": 11,
     "project_receipts": 12,
+    "core_identity_anchors": 1,
     "cells": 12,
     "proofs": {
       "FOUNDATION": 4,

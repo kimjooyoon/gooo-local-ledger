@@ -29,9 +29,9 @@ jobs:
       CORE_TAG: v0.2.0-dev
       CORE_ASSET: gooo-linux-amd64.tar.gz
       CORE_SHA256: 99599bdd3c2ae947718881dd78b899234452ab06bd8e60a550320054e1d81ddd
-      GENERATOR_TAG: v0.3.0-dev
-      GENERATOR_ASSET: gooo-evidence-generator-portable-v0.3.0-dev.tar.gz
-      GENERATOR_SHA256: dd6f53c93f8ddc04f08f7faa565fa77889ac3f4c4c2cd5563bd430b9ba94e399
+      GENERATOR_TAG: v0.3.1-dev
+      GENERATOR_ASSET: gooo-evidence-generator-portable-v0.3.1-dev.tar.gz
+      GENERATOR_SHA256: 4978c7719291317d4df74895b7b554f2b16698df9ff249d5f6300d37987e654e
       PIN: contracts/generator-v0.3-core-receipt-pin-v1.json
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +53,7 @@ jobs:
               .generator.portable_asset=={name:$generator_asset,sha256:$generator_sha} and
               .semantic_contract.meta_receipts==11 and
               .semantic_contract.project_receipts==12 and
+              .semantic_contract.core_identity_anchors==1 and
               .semantic_contract.cells==12 and
               .semantic_contract.proofs=={FOUNDATION:4,COHERENCE:4,REGRESSION:4} and
               .semantic_contract.indicators=={OUTCOME:3,DRIVER:5,GUARDRAIL:4} and
@@ -187,7 +188,7 @@ jobs:
           jq -e '
             .decision=="PROJECT_GENERATED" and
             .summary.closed==12 and .summary.unknown==0 and .summary.refuted==0 and
-            .core_resolution.identity_match and
+            .core_resolution.identity_match and .core_resolution.identity_anchor_count==1 and
             .core_resolution.meta=={required:11,closed:11,unknown:0,refuted:0} and
             .core_resolution.project=={required:12,closed:12,unknown:0,refuted:0} and
             .authority.activity_binding=="RELEASED_GOOO_ACTIVITY_RESOLUTION_RECEIPTS" and
@@ -206,7 +207,7 @@ jobs:
             "$RUNNER_TEMP/missing-receipt-graph.json" "$denominator" "$observation" "$profile" \
             "$RUNNER_TEMP/missing-receipt" "$GITHUB_SHA" local-ledger-missing-core-receipt
           jq -e '
-            .decision=="INCOMPLETE" and .summary.closed==9 and .summary.unknown==3 and
+            .decision=="INCOMPLETE" and .summary.closed==10 and .summary.unknown==2 and
             .claim.stage=="RESOLUTION_OBSERVATION" and
             .claim.step=="BIND_CORE_ACTIVITY_RESOLUTION_RECEIPT" and
             .claim.reason=="CORE_ACTIVITY_RESOLUTION_RECEIPT_UNAVAILABLE" and
@@ -220,7 +221,7 @@ jobs:
             "$RUNNER_TEMP/invalid-decision-graph.json" "$denominator" "$observation" "$profile" \
             "$RUNNER_TEMP/invalid-decision" "$GITHUB_SHA" local-ledger-invalid-core-decision
           jq -e '
-            .decision=="FAIL_CLOSED" and .summary.closed==9 and .summary.refuted==3 and
+            .decision=="FAIL_CLOSED" and .summary.closed==10 and .summary.refuted==2 and
             .claim.stage=="RESOLUTION" and .claim.step=="RESOLVE_ACTIVITY_CARDINALITY" and
             .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"
           ' "$RUNNER_TEMP/invalid-decision/generation-report.json" >/dev/null
@@ -232,8 +233,8 @@ jobs:
             "$RUNNER_TEMP/identity-mismatch-graph.json" "$denominator" "$observation" "$profile" \
             "$RUNNER_TEMP/identity-mismatch" "$GITHUB_SHA" local-ledger-core-identity-mismatch
           jq -e '
-            .decision=="FAIL_CLOSED" and .summary.closed==2 and .summary.refuted==10 and
-            .core_resolution.identity_match==false and
+            .decision=="FAIL_CLOSED" and .summary.closed==8 and .summary.refuted==4 and
+            .core_resolution.identity_match==false and .core_resolution.identity_anchor_count==1 and
             .claim.stage=="CORE_RELEASE" and .claim.step=="BIND_CORE_RESOLUTION_RELEASE_IDENTITY" and
             .claim.reason=="CORE_RESOLUTION_RELEASE_IDENTITY_MISMATCH"
           ' "$RUNNER_TEMP/identity-mismatch/generation-report.json" >/dev/null
@@ -262,7 +263,7 @@ jobs:
             --slurpfile report "$RUNNER_TEMP/complete-a/generation-report.json" '
               {schema:"gooo/local-ledger/generator-v0.3-consumer-runtime/v1",
                subject_sha:$subject_sha,
-               releases:{core:"v0.2.0-dev",generator:"v0.3.0-dev"},
+               releases:{core:"v0.2.0-dev",generator:"v0.3.1-dev"},
                core_resolution:$report[0].core_resolution,
                cells:$report[0].summary,
                proofs:$report[0].proofs,

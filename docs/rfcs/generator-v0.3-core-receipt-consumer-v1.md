@@ -60,7 +60,7 @@ The core language, generator, and local ledger can release independently:
 | Producer | Consumer pin | Coupling |
 |---|---|---|
 | Gooo | v0.2.0-dev tag object, commit, archive digest | Activity-resolution receipt schema only |
-| Evidence generator | v0.3.0-dev tag object, commit, portable archive digest | Generator CLI and generated evidence schema |
+| Evidence generator | v0.3.1-dev tag object, commit, portable archive digest | Generator CLI and generated evidence schema |
 | Local ledger | Existing project.gooo and profile | No producer source checkout |
 
 Failure in this experimental path must not change the existing v0.1 readiness decision. A later compatibility claim requires a separate denominator.
@@ -83,3 +83,11 @@ The orchestrator is deliberately delayed. Before two independent domains produce
 The useful property is not new syntax for tasks that Go, HCL, OpenAPI, or design tools already perform. Gooo contributes a portable account of why a generated relation is closed, unknown, or refuted, which released semantic operation produced that state, and what next operation can raise resolution.
 
 Positive results are evidence for one fixed denominator only. They are not evidence that the language is generally complete, commercially valuable, or preferable to existing languages.
+
+The first independent run found that this denominator has a different
+dependency width from the generator's self-hosted denominator. Removing one
+selected receipt produces `10 CLOSED / 2 UNKNOWN`; replacing its decision with
+an unrecognized value produces `10 CLOSED / 2 REFUTED`. A core identity
+mismatch starts at the declared `RELEASED_GOOO_SEMANTICS` anchor and produces
+`8 CLOSED / 4 REFUTED`. These counts are consumer-owned observations, not
+copied expectations from the producer.
