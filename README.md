@@ -55,4 +55,10 @@ The CI summary shows exact observed numbers rather than a qualitative score:
 The candidate project root is not required to contain a `README.md`.
 Documentation evidence is an explicit path in the project contract.
 
+The standalone readiness policy also fixes the operational boundary at
+`READ_ONLY`, external required gates `0`, cross-project branch inputs `0`, and
+required local test executions `0`. The external-gate metric is bound to the
+existing `ObserveReadOnlyEffect` Gooo activity rather than being reported as an
+unbound configuration number.
+
 See [the v1 RFC](docs/rfcs/local-ledger-v1.md).

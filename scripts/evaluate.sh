@@ -13,9 +13,10 @@ output=$4
 head_sha=$5
 phase=$6
 denominator="$root/contracts/project-readiness-denominator-v1.json"
+policy="$root/contracts/project-readiness-policy-v1.json"
 manifest="$candidate/project.json"
 
-for file in "$denominator" "$manifest" "$runtime"; do
+for file in "$denominator" "$policy" "$manifest" "$runtime"; do
   test -f "$file" || { echo "missing required input: $file" >&2; exit 2; }
 done
 
@@ -42,6 +43,7 @@ test -s "$candidate/$release_notes" && release_notes_ok=true || release_notes_ok
 
 jq -n \
   --slurpfile denominator "$denominator" \
+  --slurpfile policy "$policy" \
   --slurpfile manifest "$manifest" \
   --slurpfile runtime "$runtime" \
   --arg head_sha "$head_sha" \
@@ -68,7 +70,8 @@ jq -n \
     ($runtime[0].semantic_check.schema_version == "gooo/diagnostics/v1" and $runtime[0].semantic_check.status == "ok" and ($runtime[0].semantic_check.semantic_hash | valid_raw_digest)),
     ($runtime[0].graph.schema_version == "gooo-graph/v1" and ($runtime[0].graph.source_digest | valid_raw_digest) and actual_activities == expected_activities)
   ] | map(select(. == true)) | length);
-  def authority_ok: $manifest[0].schema == "gooo/local-ledger/project/v1" and ($manifest[0].source_paths|length)==2 and ($manifest[0].required_paths|length)==5;
+  def policy_ok: $policy[0].schema=="gooo/local-ledger/readiness-policy/v1" and $policy[0].id=="gooo://policy/local-ledger-readiness-v1" and $policy[0].effect=="READ_ONLY" and $policy[0].external_required_gates==0 and $policy[0].cross_project_branch_inputs==0 and $policy[0].root_readme_required==false and $policy[0].local_tests_required==0 and $policy[0].metric_bindings.external_required_gates=="ObserveReadOnlyEffect";
+  def authority_ok: $manifest[0].schema == "gooo/local-ledger/project/v1" and $manifest[0].readiness_policy==$policy[0].id and ($manifest[0].source_paths|length)==2 and ($manifest[0].required_paths|length)==5 and policy_ok;
   def source_state: if $source_available != true then "UNKNOWN" elif $actual_source_digest == $runtime[0].expected_source_digest then "CLOSED" else "REFUTED" end;
   def closed($cell): $cell + {state:"CLOSED",resolution:"EXACT",reason:$cell.closed_reason,next_operation:"NONE"};
   def unknown($cell): $cell + {state:"UNKNOWN",resolution:"PREREQUISITE_CLASS",reason:$cell.unknown_reason,next_operation:$cell.next_operation};
@@ -110,7 +113,7 @@ jq -n \
     summary:{total:12,closed:$closed_count,unknown:$unknown_count,refuted:$refuted_count,repository_writes:$runtime[0].repository.writes},
     inventory:{files:$file_count,descendant_directories:$directory_count,go_physical_lines:$go_lines,gooo_physical_lines:$gooo_lines,required_artifacts_observed:$required_observed,required_artifacts_total:$required_total},
     performance:$runtime[0].performance,
-    authority:{binding:"RELEASED_GOOO_GRAPH_ACTIVITY_SET",activity_bindings:activity_count,activity_total:12,source_spans:"NOT_AVAILABLE"},
+    authority:{binding:"RELEASED_GOOO_GRAPH_ACTIVITY_SET",activity_bindings:activity_count,activity_total:12,source_spans:"NOT_AVAILABLE",policy_schema:$policy[0].schema,policy_id:$policy[0].id,effect:$policy[0].effect,external_required_gates:$policy[0].external_required_gates,cross_project_branch_inputs:$policy[0].cross_project_branch_inputs,root_readme_required:$policy[0].root_readme_required,local_tests_required:$policy[0].local_tests_required},
     cells:$cells,
     proofs:(["FOUNDATION","COHERENCE","REGRESSION"]|map(. as $proof|{choice:$proof,closed:([$cells[]|select(.proof_choice==$proof and .state=="CLOSED")]|length),total:([$cells[]|select(.proof_choice==$proof)]|length)})),
     indicators:[
@@ -124,6 +127,7 @@ jq -n \
       {id:"gooo.metric.local-ledger.activity-bindings.v1",value:activity_count,total:12,unit:"activities",state:(if activity_count==12 then "SATISFIED" else "GAP" end),activity:"BindReleasedGoooSemantics"},
       {id:"gooo.metric.local-ledger.graph-peak-rss.v1",value:$runtime[0].performance.graph_peak_rss_kib,unit:"KiB",state:"OBSERVED",activity:"ObserveResourceUsage"},
       {id:"gooo.metric.local-ledger.graph-wall-time.v1",value:$runtime[0].performance.graph_wall_ms,unit:"ms",state:"OBSERVED",activity:"ObserveResourceUsage"},
-      {id:"gooo.metric.local-ledger.repository-writes.v1",value:$runtime[0].repository.writes,total:1,unit:"writes",state:(if $runtime[0].repository.writes==0 then "SATISFIED" else "REFUTED" end),activity:"ObserveReadOnlyEffect"}
+      {id:"gooo.metric.local-ledger.repository-writes.v1",value:$runtime[0].repository.writes,total:1,unit:"writes",state:(if $runtime[0].repository.writes==0 then "SATISFIED" else "REFUTED" end),activity:"ObserveReadOnlyEffect"},
+      {id:"gooo.metric.local-ledger.external-required-gates.v1",value:$policy[0].external_required_gates,total:0,unit:"required_gates",state:(if $policy[0].external_required_gates==0 then "SATISFIED" else "REFUTED" end),activity:$policy[0].metric_bindings.external_required_gates}
     ]
   }' > "$output"
