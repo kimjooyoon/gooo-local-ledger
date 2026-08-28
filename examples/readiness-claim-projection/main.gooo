@@ -1,0 +1,25 @@
+package readinessclaimprojection
+namespace localreadinessprojection
+
+entity ClaimResolutionCoreRelease id "local://readiness-projection/core-release"
+entity ReleasedReadinessReports id "local://readiness-projection/released-reports"
+entity ReadinessDenominator id "local://readiness-projection/readiness-denominator"
+entity UnknownClassification id "local://readiness-projection/unknown-classification"
+entity ProjectedClaimProgram id "local://readiness-projection/projected-claim-program"
+entity ProjectedClaimReceipt id "local://readiness-projection/projected-claim-receipt"
+entity ProjectionCounterexample id "local://readiness-projection/counterexample"
+entity ProjectionReplay id "local://readiness-projection/replay"
+entity UserResolutionReceipt id "local://readiness-projection/user-receipt"
+
+activity ObserveClaimResolutionCoreRelease(ClaimResolutionCoreRelease) -> UserResolutionReceipt
+activity ObserveReleasedReadinessReports(ReleasedReadinessReports) -> UserResolutionReceipt
+activity BindReadinessDenominator(ReadinessDenominator) -> UnknownClassification
+activity BindDeclaredUnknownClassifications(UnknownClassification) -> ProjectedClaimProgram
+activity ProjectClosedReadinessClaim(ReleasedReadinessReports) -> ProjectedClaimReceipt
+activity ProjectUnknownReadinessClaim(UnknownClassification) -> ProjectedClaimReceipt
+activity ProjectRefutedReadinessClaim(ReleasedReadinessReports) -> ProjectedClaimReceipt
+activity CompareProjectedClaimReceipts(ProjectedClaimReceipt) -> UserResolutionReceipt
+activity RejectUndeclaredUnknownCoordinate(ProjectionCounterexample) -> UserResolutionReceipt
+activity RejectDuplicateUnknownCoordinate(ProjectionCounterexample) -> UserResolutionReceipt
+activity ObserveProjectionReplay(ProjectionReplay) -> UserResolutionReceipt
+activity PublishReadinessResolutionReceipt(UserResolutionReceipt) -> UserResolutionReceipt
