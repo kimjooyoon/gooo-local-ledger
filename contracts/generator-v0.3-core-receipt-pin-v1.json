@@ -1,0 +1,43 @@
+{
+  "schema": "gooo/local-ledger/generator-core-receipt-pin/v1",
+  "generator": {
+    "repository": "kimjooyoon/gooo-evidence-generator",
+    "tag": "v0.3.0-dev",
+    "tag_object_sha": "cc82bce7373f3ecd647a345e78ab0e8b3305ccd9",
+    "target_commit_sha": "4745976cb7e99586bb322b3286023dd34718a81a",
+    "portable_asset": {
+      "name": "gooo-evidence-generator-portable-v0.3.0-dev.tar.gz",
+      "sha256": "dd6f53c93f8ddc04f08f7faa565fa77889ac3f4c4c2cd5563bd430b9ba94e399"
+    }
+  },
+  "core": {
+    "repository": "kimjooyoon/meta-ontology-go",
+    "tag": "v0.2.0-dev",
+    "tag_object_sha": "733f7b22a365606d42bf238f5c535ff12e5abf8c",
+    "target_commit_sha": "050b11e56d9f972e0d507d406e5da8a60595052b",
+    "linux_asset": {
+      "name": "gooo-linux-amd64.tar.gz",
+      "sha256": "99599bdd3c2ae947718881dd78b899234452ab06bd8e60a550320054e1d81ddd"
+    }
+  },
+  "semantic_contract": {
+    "authority": "RELEASED_GOOO_ACTIVITY_RESOLUTION_RECEIPTS",
+    "graph_role": "DERIVED_IDS_AND_DIGESTS_ONLY",
+    "meta_receipts": 11,
+    "project_receipts": 12,
+    "cells": 12,
+    "proofs": {
+      "FOUNDATION": 4,
+      "COHERENCE": 4,
+      "REGRESSION": 4
+    },
+    "indicators": {
+      "OUTCOME": 3,
+      "DRIVER": 5,
+      "GUARDRAIL": 4
+    },
+    "root_readme_readiness": "EXCLUDED",
+    "repository_writes": 0,
+    "local_tests_run": 0
+  }
+}
