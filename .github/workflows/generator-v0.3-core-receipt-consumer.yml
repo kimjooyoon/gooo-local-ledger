@@ -145,6 +145,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          diagnose_failure() {
+            set +e
+            echo '--- generator decision diagnostics ---'
+            for candidate in \
+              "$RUNNER_TEMP/complete-a/generation-report.json" \
+              "$RUNNER_TEMP/missing-receipt/generation-report.json" \
+              "$RUNNER_TEMP/invalid-decision/generation-report.json" \
+              "$RUNNER_TEMP/identity-mismatch/generation-report.json"; do
+              if [ -f "$candidate" ]; then
+                jq -c '{file:input_filename,decision,summary,core_resolution,proofs,indicators,claim}' "$candidate"
+              fi
+            done
+          }
+          trap diagnose_failure ERR
           denominator="$GENERATOR_ROOT/contracts/external-ledger-denominator-v1.json"
           observation="$GENERATOR_ROOT/contracts/repetition-observation-v1.json"
           profile="$GITHUB_WORKSPACE/fixtures/generated-project-v2.json"
