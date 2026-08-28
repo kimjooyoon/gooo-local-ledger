@@ -55,7 +55,7 @@ jq -S -n \
   --slurpfile replay "$replay" \
   --arg subject_sha "$subject_sha" --arg phase "$phase" '
   def cell($id): $denominator[0].cells[] | select(.id==$id);
-  def clean: del(.closed_reason,.unknown_reason,.unknown_class,.next_operation,.refuted_reason,.repair_operation,.depends_on);
+  def clean: del(.closed_reason,.unknown_reason,.refuted_reason,.repair_operation,.depends_on);
   def closed($cell): ($cell + {state:"CLOSED",reason:$cell.closed_reason,unknown_class:null,next_operation:"NONE",blocked_by:[]}) | clean;
   def unknown_direct($cell;$reason;$next): ($cell + {state:"UNKNOWN",reason:$reason,unknown_class:"DIRECT_MISSING",next_operation:$next,blocked_by:[]}) | clean;
   def unknown_dependency($cell;$blocked): ($cell + {state:"UNKNOWN",reason:"DEPENDENCY_EVIDENCE_UNAVAILABLE",unknown_class:"DEPENDENCY_BLOCKED",next_operation:"RESOLVE_BLOCKING_CLAIMS",blocked_by:$blocked}) | clean;

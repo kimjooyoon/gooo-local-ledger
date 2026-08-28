@@ -162,7 +162,7 @@ jobs:
             replay="$RUNNER_TEMP/replay/$scenario"
             mkdir -p "$replay"
             bash "$PROJECTOR" "$evidence/reports/$scenario.json" "$READINESS_DENOMINATOR" "$CLASSIFICATION" "$replay"
-            "$gooo" claim resolve "$replay/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$replay/receipt.json"
+            "$gooo" claim resolve "$evidence/projected/$scenario/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$replay/receipt.json"
             cmp -s "$evidence/projected/$scenario/projected-claim.gooo" "$replay/projected-claim.gooo" && equal=$((equal+1))
             cmp -s "$evidence/projected/$scenario/projection.json" "$replay/projection.json" && equal=$((equal+1))
             cmp -s "$evidence/receipts/$scenario.json" "$replay/receipt.json" && equal=$((equal+1))
