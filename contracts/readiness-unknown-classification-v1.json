@@ -1,0 +1,20 @@
+{
+  "schema": "gooo/local-ledger/readiness-unknown-classification/v1",
+  "id": "gooo://classification/local-ledger-readiness-unknown-v1",
+  "source_denominator_id": "gooo://denominator/local-ledger-release-readiness-v1",
+  "total": 12,
+  "classes": [
+    {"id":"PROJECT_AUTHORITY","stage":"AUTHORITY","step":"PARSE_PROJECT_MANIFEST","reason":"PROJECT_AUTHORITY_UNAVAILABLE","next_operation":"PROVIDE_PROJECT_MANIFEST","unknown_class":"DIRECT_MISSING"},
+    {"id":"SOURCE_SNAPSHOT","stage":"SOURCE","step":"VERIFY_SOURCE_SNAPSHOT","reason":"SOURCE_SNAPSHOT_UNAVAILABLE","next_operation":"OBSERVE_SOURCE_SNAPSHOT","unknown_class":"DIRECT_MISSING"},
+    {"id":"FILE_INVENTORY","stage":"INVENTORY","step":"COUNT_FILES_AND_DIRECTORIES","reason":"PROJECT_INVENTORY_UNAVAILABLE","next_operation":"COUNT_PROJECT_INVENTORY","unknown_class":"DIRECT_MISSING"},
+    {"id":"LANGUAGE_LINES","stage":"INVENTORY","step":"COUNT_LANGUAGE_LINES","reason":"LANGUAGE_LINES_UNAVAILABLE","next_operation":"COUNT_LANGUAGE_LINES","unknown_class":"DIRECT_MISSING"},
+    {"id":"BUILD_ENTRYPOINT","stage":"BUILD","step":"OBSERVE_GO_ENTRYPOINT","reason":"GO_ENTRYPOINT_UNAVAILABLE","next_operation":"PROVIDE_GO_ENTRYPOINT","unknown_class":"DIRECT_MISSING"},
+    {"id":"DOCUMENTATION","stage":"DOCUMENTATION","step":"OBSERVE_PROJECT_OVERVIEW","reason":"PROJECT_OVERVIEW_UNAVAILABLE","next_operation":"PROVIDE_PROJECT_OVERVIEW","unknown_class":"DIRECT_MISSING"},
+    {"id":"OPERATIONS_RUNBOOK","stage":"OPERATIONS","step":"OBSERVE_RUNBOOK","reason":"OPERATIONS_RUNBOOK_UNAVAILABLE","next_operation":"PROVIDE_OPERATIONS_RUNBOOK","unknown_class":"DIRECT_MISSING"},
+    {"id":"RELEASE_NOTES","stage":"RELEASE","step":"OBSERVE_RELEASE_NOTES","reason":"RELEASE_NOTES_UNAVAILABLE","next_operation":"PROVIDE_RELEASE_NOTES","unknown_class":"DIRECT_MISSING"},
+    {"id":"RELEASED_GOOO_BINDING","stage":"COMPILER","step":"OBSERVE_RELEASED_GOOO_RECEIPTS","reason":"RELEASED_GOOO_RECEIPTS_UNAVAILABLE","next_operation":"EXECUTE_RELEASED_GOOO_CLI","unknown_class":"DIRECT_MISSING"},
+    {"id":"RESOURCE_SAMPLE","stage":"RESOURCE","step":"SAMPLE_RESOURCE_USAGE","reason":"RESOURCE_USAGE_UNAVAILABLE","next_operation":"SAMPLE_RELEASED_CLI_RESOURCES","unknown_class":"CONTEXT_MISSING"},
+    {"id":"READ_ONLY_EFFECT","stage":"EFFECT","step":"OBSERVE_READ_ONLY_EFFECT","reason":"REPOSITORY_EFFECT_UNAVAILABLE","next_operation":"COMPARE_REPOSITORY_SNAPSHOTS","unknown_class":"CONTEXT_MISSING"},
+    {"id":"USER_DECISION","stage":"USER","step":"CLOSE_RELEASE_DECISION","reason":"RELEASE_DECISION_BLOCKED","next_operation":"RESOLVE_FIRST_UNKNOWN","unknown_class":"DEPENDENCY_BLOCKED"}
+  ]
+}

@@ -1,0 +1,278 @@
+name: Readiness claim projection
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readiness-claim-projection-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  projection:
+    runs-on: ubuntu-latest
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      LOCK: contracts/readiness-claim-projection-release-lock-v1.json
+      READINESS_DENOMINATOR: contracts/project-readiness-denominator-v1.json
+      PROJECTION_DENOMINATOR: contracts/readiness-claim-projection-denominator-v1.json
+      CLASSIFICATION: contracts/readiness-unknown-classification-v1.json
+      SOURCE: examples/readiness-claim-projection/main.gooo
+      PROJECTOR: scripts/project-readiness-claim.sh
+      EVALUATOR: scripts/evaluate-readiness-claim-projection.sh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SUBJECT_SHA }}
+
+      - name: Bind exact subject identity
+        run: test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.0'
+
+      - name: Observe Go 1.27 and actual module roots
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = "go1.27.0"
+          git status --porcelain=v1 -z --untracked-files=all > "$RUNNER_TEMP/repository-before.bin"
+          modules=$(find . -type f -name go.mod -not -path './.git/*' | wc -l | tr -d ' ')
+          while IFS= read -r -d '' module; do
+            (cd "$(dirname "$module")" && go fix ./...)
+          done < <(find . -type f -name go.mod -not -path './.git/*' -print0)
+          jq -S -n --arg go_version "$(go env GOVERSION)" --argjson modules "$modules" \
+            '{schema:"gooo/local-ledger/projection-go-fix-observation/v1",go_version:$go_version,
+              module_roots:$modules,go_fix_targets:$modules}' > "$RUNNER_TEMP/go-fix-observation.json"
+
+      - name: Observe digest-locked releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for selector in core readiness; do
+            repository=$(jq -r ".$selector.repository" "$LOCK")
+            tag=$(jq -r ".$selector.tag" "$LOCK")
+            gh api "repos/$repository/releases/tags/$tag" > "$RUNNER_TEMP/$selector-release.json"
+            gh api "repos/$repository/git/ref/tags/$tag" > "$RUNNER_TEMP/$selector-ref.json"
+            jq -e --arg selector "$selector" --slurpfile lock "$LOCK" '
+              .tag_name==$lock[0][$selector].tag and .draft==false and
+              ([.assets[]|select(.id==$lock[0][$selector].asset.id and
+                .name==$lock[0][$selector].asset.name and .size==$lock[0][$selector].asset.size and
+                .digest==("sha256:"+$lock[0][$selector].asset.sha256))]|length)==1
+            ' "$RUNNER_TEMP/$selector-release.json" >/dev/null
+            jq -e --arg selector "$selector" --slurpfile lock "$LOCK" '
+              .object.type==$lock[0][$selector].ref_type and .object.sha==$lock[0][$selector].tag_object_sha
+            ' "$RUNNER_TEMP/$selector-ref.json" >/dev/null
+            ref_type=$(jq -r '.object.type' "$RUNNER_TEMP/$selector-ref.json")
+            ref_sha=$(jq -r '.object.sha' "$RUNNER_TEMP/$selector-ref.json")
+            if test "$ref_type" = tag; then
+              target_sha=$(gh api "repos/$repository/git/tags/$ref_sha" --jq '.object.sha')
+            else
+              target_sha=$ref_sha
+            fi
+            test "$target_sha" = "$(jq -r ".$selector.target_commit_sha" "$LOCK")"
+          done
+
+      - name: Download released compiler and readiness evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          core_id=$(jq -r '.core.asset.id' "$LOCK")
+          readiness_id=$(jq -r '.readiness.asset.id' "$LOCK")
+          gh api -H 'Accept: application/octet-stream' "repos/kimjooyoon/meta-ontology-go/releases/assets/$core_id" > "$RUNNER_TEMP/gooo.tar.gz"
+          gh api -H 'Accept: application/octet-stream' "repos/kimjooyoon/gooo-local-ledger/releases/assets/$readiness_id" > "$RUNNER_TEMP/readiness.zip"
+          test "$(sha256sum "$RUNNER_TEMP/gooo.tar.gz" | awk '{print $1}')" = "$(jq -r '.core.asset.sha256' "$LOCK")"
+          test "$(sha256sum "$RUNNER_TEMP/readiness.zip" | awk '{print $1}')" = "$(jq -r '.readiness.asset.sha256' "$LOCK")"
+          mkdir -p "$RUNNER_TEMP/gooo" "$RUNNER_TEMP/readiness"
+          tar -xzf "$RUNNER_TEMP/gooo.tar.gz" -C "$RUNNER_TEMP/gooo"
+          unzip -q "$RUNNER_TEMP/readiness.zip" -d "$RUNNER_TEMP/readiness"
+          while IFS= read -r report; do
+            test -s "$RUNNER_TEMP/readiness/$report"
+          done < <(jq -r '.readiness.required_reports[]' "$LOCK")
+
+      - name: Conform projection authority
+        run: |
+          set -euo pipefail
+          gooo="$RUNNER_TEMP/gooo/gooo"
+          "$gooo" check --json "$SOURCE" > "$RUNNER_TEMP/projection-syntax.json"
+          "$gooo" check --semantic --json "$SOURCE" > "$RUNNER_TEMP/projection-semantic.json"
+          "$gooo" graph dump "$SOURCE" > "$RUNNER_TEMP/projection-graph.json"
+
+      - name: Project and resolve three released claims
+        run: |
+          set -euo pipefail
+          gooo="$RUNNER_TEMP/gooo/gooo"
+          evidence="$RUNNER_TEMP/evidence"
+          mkdir -p "$evidence/reports" "$evidence/projected" "$evidence/receipts" "$evidence/counterexamples"
+          for scenario in ready missing-runbook source-refuted; do
+            cp "$RUNNER_TEMP/readiness/$scenario.json" "$evidence/reports/$scenario.json"
+            mkdir -p "$evidence/projected/$scenario"
+            bash "$PROJECTOR" "$evidence/reports/$scenario.json" "$READINESS_DENOMINATOR" "$CLASSIFICATION" "$evidence/projected/$scenario"
+            "$gooo" check --json "$evidence/projected/$scenario/projected-claim.gooo" > "$evidence/projected/$scenario/syntax.json"
+            "$gooo" check --semantic --json "$evidence/projected/$scenario/projected-claim.gooo" > "$evidence/projected/$scenario/semantic.json"
+            "$gooo" graph dump "$evidence/projected/$scenario/projected-claim.gooo" > "$evidence/projected/$scenario/graph.json"
+          done
+          start_ns=$(date +%s%N)
+          /usr/bin/time -f '%M' -o "$RUNNER_TEMP/projection-rss" \
+            "$gooo" claim resolve "$evidence/projected/ready/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$evidence/receipts/ready.json"
+          "$gooo" claim resolve "$evidence/projected/missing-runbook/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$evidence/receipts/missing-runbook.json"
+          "$gooo" claim resolve "$evidence/projected/source-refuted/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$evidence/receipts/source-refuted.json"
+          end_ns=$(date +%s%N)
+          printf '%s\n' "$(( (end_ns-start_ns)/1000000 ))" > "$RUNNER_TEMP/projection-wall-ms"
+
+      - name: Reject undeclared and duplicate UNKNOWN coordinates
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/evidence"
+          jq '.claim.stage="UNDECLARED_STAGE"' "$evidence/reports/missing-runbook.json" > "$RUNNER_TEMP/undeclared-report.json"
+          mkdir -p "$RUNNER_TEMP/undeclared"
+          if bash "$PROJECTOR" "$RUNNER_TEMP/undeclared-report.json" "$READINESS_DENOMINATOR" "$CLASSIFICATION" "$RUNNER_TEMP/undeclared"; then
+            echo 'projector accepted undeclared UNKNOWN coordinate' >&2; exit 1
+          else
+            test "$?" -eq 3
+          fi
+          cp "$RUNNER_TEMP/undeclared/projection.json" "$evidence/counterexamples/undeclared.json"
+          jq '(.classes[11].stage)=.classes[6].stage |
+              (.classes[11].step)=.classes[6].step |
+              (.classes[11].reason)=.classes[6].reason |
+              (.classes[11].next_operation)=.classes[6].next_operation' \
+            "$CLASSIFICATION" > "$RUNNER_TEMP/duplicate-classification.json"
+          mkdir -p "$RUNNER_TEMP/duplicate"
+          if bash "$PROJECTOR" "$evidence/reports/missing-runbook.json" "$READINESS_DENOMINATOR" "$RUNNER_TEMP/duplicate-classification.json" "$RUNNER_TEMP/duplicate"; then
+            echo 'projector accepted duplicate UNKNOWN coordinate' >&2; exit 1
+          else
+            test "$?" -eq 3
+          fi
+          cp "$RUNNER_TEMP/duplicate/projection.json" "$evidence/counterexamples/duplicate.json"
+
+      - name: Replay generated programs, projections, and receipts
+        run: |
+          set -euo pipefail
+          gooo="$RUNNER_TEMP/gooo/gooo"
+          evidence="$RUNNER_TEMP/evidence"
+          equal=0
+          for scenario in ready missing-runbook source-refuted; do
+            replay="$RUNNER_TEMP/replay/$scenario"
+            mkdir -p "$replay"
+            bash "$PROJECTOR" "$evidence/reports/$scenario.json" "$READINESS_DENOMINATOR" "$CLASSIFICATION" "$replay"
+            "$gooo" claim resolve "$evidence/projected/$scenario/projected-claim.gooo" --activity ResolveProjectedReadinessClaim --json > "$replay/receipt.json"
+            cmp -s "$evidence/projected/$scenario/projected-claim.gooo" "$replay/projected-claim.gooo" && equal=$((equal+1))
+            cmp -s "$evidence/projected/$scenario/projection.json" "$replay/projection.json" && equal=$((equal+1))
+            cmp -s "$evidence/receipts/$scenario.json" "$replay/receipt.json" && equal=$((equal+1))
+          done
+          jq -S -n --argjson equal "$equal" \
+            '{schema:"gooo/local-ledger/readiness-claim-projection-replay/v1",comparisons_total:9,
+              comparisons_equal:$equal,deterministic:($equal==9)}' > "$evidence/replay.json"
+
+      - name: Observe repository inventory and read-only effect
+        run: |
+          set -euo pipefail
+          git status --porcelain=v1 -z --untracked-files=all > "$RUNNER_TEMP/repository-after.bin"
+          if cmp -s "$RUNNER_TEMP/repository-before.bin" "$RUNNER_TEMP/repository-after.bin"; then writes=0; else writes=1; fi
+          files=$(find . -type f -not -path './.git/*' | wc -l | tr -d ' ')
+          directories=$(find . -mindepth 1 -type d -not -path './.git*' | wc -l | tr -d ' ')
+          go_files=$(find . -type f -name '*.go' -not -path './.git/*' | wc -l | tr -d ' ')
+          gooo_files=$(find . -type f -name '*.gooo' -not -path './.git/*' | wc -l | tr -d ' ')
+          go_lines=$({ find . -type f -name '*.go' -not -path './.git/*' -print0 | xargs -0 -r cat || true; } | wc -l | tr -d ' ')
+          gooo_lines=$({ find . -type f -name '*.gooo' -not -path './.git/*' -print0 | xargs -0 -r cat || true; } | wc -l | tr -d ' ')
+          : > "$RUNNER_TEMP/per-file.ndjson"
+          while IFS= read -r file; do
+            case "$file" in *.gooo) language=Gooo;; *) language=Go;; esac
+            lines=$(wc -l < "$file" | tr -d ' ')
+            jq -c -n --arg path "${file#./}" --arg language "$language" --argjson lines "$lines" \
+              '{path:$path,language:$language,lines:$lines}' >> "$RUNNER_TEMP/per-file.ndjson"
+          done < <(find . -type f \( -name '*.go' -o -name '*.gooo' \) -not -path './.git/*' | sort)
+          jq -s . "$RUNNER_TEMP/per-file.ndjson" > "$RUNNER_TEMP/per-file.json"
+          jq -S -n \
+            --arg subject_sha "$SUBJECT_SHA" --arg go_version "$(go env GOVERSION)" \
+            --argjson module_roots "$(jq '.module_roots' "$RUNNER_TEMP/go-fix-observation.json")" \
+            --argjson peak_rss_kib "$(cat "$RUNNER_TEMP/projection-rss")" \
+            --argjson wall_ms "$(cat "$RUNNER_TEMP/projection-wall-ms")" \
+            --argjson writes "$writes" --argjson files "$files" --argjson directories "$directories" \
+            --argjson go_files "$go_files" --argjson gooo_files "$gooo_files" \
+            --argjson go_lines "$go_lines" --argjson gooo_lines "$gooo_lines" \
+            --slurpfile per_file "$RUNNER_TEMP/per-file.json" '
+            {schema:"gooo/local-ledger/readiness-claim-projection-runtime/v1",subject_sha:$subject_sha,
+              core_release_observed:true,readiness_release_observed:true,release_locks_observed:2,
+              go_version:$go_version,go_fix_module_roots:$module_roots,
+              performance:{peak_rss_kib:$peak_rss_kib,wall_ms:$wall_ms},
+              inventory:{repository_files:$files,descendant_directories:$directories,
+                go:{files:$go_files,physical_lines:$go_lines},gooo:{files:$gooo_files,physical_lines:$gooo_lines},
+                per_file:$per_file[0]},repository_writes:$writes,local_tests_run:0,cross_project_required_gates:0}
+          ' > "$RUNNER_TEMP/projection-runtime.json"
+
+      - name: Evaluate normal, UNKNOWN, and REFUTED projection paths
+        run: |
+          set -euo pipefail
+          args=("$RUNNER_TEMP/projection-graph.json" "$PROJECTION_DENOMINATOR" "$CLASSIFICATION")
+          bash "$EVALUATOR" "${args[@]}" "$RUNNER_TEMP/evidence" "$RUNNER_TEMP/projection-runtime.json" "$RUNNER_TEMP/projection-report.json" "$SUBJECT_SHA" complete
+          bash "$EVALUATOR" "${args[@]}" "$RUNNER_TEMP/evidence" "$RUNNER_TEMP/projection-runtime.json" "$RUNNER_TEMP/projection-report-replay.json" "$SUBJECT_SHA" complete
+          cmp -s "$RUNNER_TEMP/projection-report.json" "$RUNNER_TEMP/projection-report-replay.json"
+          cp -R "$RUNNER_TEMP/evidence" "$RUNNER_TEMP/evidence-missing"
+          printf 'null\n' > "$RUNNER_TEMP/evidence-missing/receipts/missing-runbook.json"
+          bash "$EVALUATOR" "${args[@]}" "$RUNNER_TEMP/evidence-missing" "$RUNNER_TEMP/projection-runtime.json" "$RUNNER_TEMP/projection-unknown.json" "$SUBJECT_SHA" missing-core-receipt
+          cp -R "$RUNNER_TEMP/evidence" "$RUNNER_TEMP/evidence-tampered"
+          jq '.claim.unknown_class="CONTEXT_MISSING"' "$RUNNER_TEMP/evidence/receipts/missing-runbook.json" > "$RUNNER_TEMP/evidence-tampered/receipts/missing-runbook.json"
+          bash "$EVALUATOR" "${args[@]}" "$RUNNER_TEMP/evidence-tampered" "$RUNNER_TEMP/projection-runtime.json" "$RUNNER_TEMP/projection-refuted.json" "$SUBJECT_SHA" changed-unknown-class
+          jq -e '.decision=="READINESS_CLAIM_PROJECTION_OBSERVED" and .summary.closed_cells==12 and
+            .summary.source_readiness_reports_observed==3 and .summary.source_claim_fields_observed==15 and
+            .summary.projected_claim_programs_observed==3 and .summary.projected_claim_receipts_observed==3 and
+            .summary.projected_claim_fields_observed==18 and .summary.unknown_class_bindings_observed==1 and
+            .summary.classification_entries_observed==12 and .summary.projection_counterexamples_rejected==2 and
+            .summary.replay_comparisons_equal==9 and .summary.repository_writes==0 and
+            .summary.local_tests_run==0 and .summary.cross_project_required_gates==0' "$RUNNER_TEMP/projection-report.json" >/dev/null
+          jq -e '.decision=="READINESS_CLAIM_PROJECTION_UNKNOWN" and .summary.closed_cells==8 and
+            .summary.unknown_cells==4 and .claim.state=="UNKNOWN" and .claim.stage=="CLAIM_RECEIPT" and
+            .claim.step=="RESOLVE_UNKNOWN_READINESS_CLAIM" and .claim.reason=="PROJECTED_UNKNOWN_CLAIM_RECEIPT_UNAVAILABLE" and
+            .claim.unknown_class=="DIRECT_MISSING"' "$RUNNER_TEMP/projection-unknown.json" >/dev/null
+          jq -e '.decision=="FAIL_CLOSED" and .summary.closed_cells==8 and .summary.refuted_cells==4 and
+            .claim.state=="REFUTED" and .claim.stage=="CLAIM_RECEIPT" and
+            .claim.reason=="PROJECTED_UNKNOWN_CLAIM_TUPLE_MISMATCH"' "$RUNNER_TEMP/projection-refuted.json" >/dev/null
+
+      - name: Publish exact human-readable projection metrics
+        run: |
+          {
+            echo '## Readiness claim projection'
+            echo
+            jq -r '
+              "- projection cells: \(.summary.closed_cells)/\(.summary.total_cells) CLOSED",
+              "- source readiness reports: \(.summary.source_readiness_reports_observed)/\(.summary.source_readiness_reports_total)",
+              "- source five-field claims: \(.summary.source_claim_fields_observed)/\(.summary.source_claim_fields_total)",
+              "- generated Gooo claim programs: \(.summary.projected_claim_programs_observed)/\(.summary.projected_claim_programs_total)",
+              "- resolved six-field receipts: \(.summary.projected_claim_receipts_observed)/\(.summary.projected_claim_receipts_total)",
+              "- resolved claim fields: \(.summary.projected_claim_fields_observed)/\(.summary.projected_claim_fields_total)",
+              "- declared UNKNOWN classifications: \(.summary.classification_entries_observed)/\(.summary.classification_entries_total)",
+              "- rejected projection counterexamples: \(.summary.projection_counterexamples_rejected)/\(.summary.projection_counterexamples_total)",
+              "- replay comparisons: \(.summary.replay_comparisons_equal)/\(.summary.replay_comparisons_total)",
+              "- files / directories / Go files-lines / Gooo files-lines: \(.inventory.repository_files) / \(.inventory.descendant_directories) / \(.inventory.go.files)-\(.inventory.go.physical_lines) / \(.inventory.gooo.files)-\(.inventory.gooo.physical_lines)",
+              "- peak RSS / wall time: \(.performance.peak_rss_kib) KiB / \(.performance.wall_ms) ms",
+              "- repository writes / local tests / cross-project gates: \(.summary.repository_writes) / \(.summary.local_tests_run) / \(.summary.cross_project_required_gates)"
+            ' "$RUNNER_TEMP/projection-report.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce zero repository writes
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: readiness-claim-projection-${{ env.SUBJECT_SHA }}
+          path: |
+            ${{ runner.temp }}/go-fix-observation.json
+            ${{ runner.temp }}/projection-syntax.json
+            ${{ runner.temp }}/projection-semantic.json
+            ${{ runner.temp }}/projection-graph.json
+            ${{ runner.temp }}/projection-runtime.json
+            ${{ runner.temp }}/projection-report.json
+            ${{ runner.temp }}/projection-report-replay.json
+            ${{ runner.temp }}/projection-unknown.json
+            ${{ runner.temp }}/projection-refuted.json
+            ${{ runner.temp }}/evidence/
+          if-no-files-found: warn
