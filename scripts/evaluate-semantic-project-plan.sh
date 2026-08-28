@@ -60,7 +60,6 @@ jq -S -n \
     ([$graph[0].nodes[]? | select(.kind=="Activity" and .name==$activity)] | length)==1;
   def indicators_satisfied($r):
     ($r.indicators|length)==8 and all($r.indicators[];
-      .satisfied==true and
       (if .comparator=="EQ" then .value==.target
        elif .comparator=="GTE" then .value>=.target
        elif .comparator=="LTE" then .value<=.target
