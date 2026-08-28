@@ -215,6 +215,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          report_evaluation_failure() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "semantic project plan evaluation failed with status $status" >&2
+              for report in \
+                "$WORK_DIR/normal.json" \
+                "$WORK_DIR/unknown.json" \
+                "$WORK_DIR/refuted.json" \
+                "$WORK_DIR/tampered-packet.json" \
+                "$WORK_DIR/missing-meta.json" \
+                "$WORK_DIR/authority.json"; do
+                if [ -s "$report" ]; then
+                  echo "=== $report ===" >&2
+                  cat "$report" >&2
+                fi
+              done
+            fi
+          }
+          trap report_evaluation_failure EXIT
+
           evaluate() {
             plan_dir=$1
             primary=$2
