@@ -1,0 +1,7 @@
+package semanticprojectplancycle
+
+entity ProjectState id "local://semantic-project-plan/cycle/project"
+entity WorkState id "local://semantic-project-plan/cycle/work"
+
+activity DeriveProjectFromWork(WorkState) -> ProjectState computes "claim.edge:requires|project-requires-work"
+activity DeriveWorkFromProject(ProjectState) -> WorkState computes "claim.edge:supports|work-supports-project"

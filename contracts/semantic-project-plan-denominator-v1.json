@@ -1,0 +1,18 @@
+{
+  "schema": "gooo/local-ledger/semantic-project-plan-denominator/v1",
+  "version": 1,
+  "cells": [
+    {"id":"CORE_RELEASE","activity":"ObserveCoreClaimDependencyRelease","indicator_class":"DRIVER","proof_choice":"FOUNDATION","stage":"CORE_RELEASE","step":"OBSERVE_PINNED_CORE_RELEASE","reason":"PINNED_CORE_RELEASE_INVALID","next_operation":"RESTORE_PINNED_CORE_RELEASE"},
+    {"id":"RELEASE_ELIGIBILITY","activity":"BindCoreReleaseEligibility","indicator_class":"OUTCOME","proof_choice":"FOUNDATION","stage":"CORE_RELEASE","step":"BIND_RELEASE_ELIGIBILITY","reason":"CORE_RELEASE_ELIGIBILITY_INVALID","next_operation":"RESTORE_RELEASE_ELIGIBILITY"},
+    {"id":"PROJECT_PROGRAM","activity":"ValidateSemanticProjectProgram","indicator_class":"DRIVER","proof_choice":"FOUNDATION","stage":"PROJECT_PROGRAM","step":"VALIDATE_GOOO_PROJECT_PROGRAM","reason":"PROJECT_PROGRAM_INVALID","next_operation":"RESTORE_GOOO_PROJECT_PROGRAM"},
+    {"id":"PACKET_CONTRACT","activity":"BindProjectPacketContract","indicator_class":"GUARDRAIL","proof_choice":"FOUNDATION","stage":"PACKET_CONTRACT","step":"BIND_DECLARED_PACKET_CONTRACT","reason":"PACKET_CONTRACT_INVALID","next_operation":"RESTORE_PACKET_CONTRACT"},
+    {"id":"DEPENDENCY_COMMAND","activity":"ExecuteReleasedDependencyPlanner","indicator_class":"DRIVER","proof_choice":"COHERENCE","stage":"DEPENDENCY_COMMAND","step":"EXECUTE_RELEASED_DEPENDENCY_COMMAND","reason":"DEPENDENCY_COMMAND_REPORT_INVALID","next_operation":"RESTORE_RELEASED_DEPENDENCY_REPORT"},
+    {"id":"EIGHT_DEPENDENCIES","activity":"BindEightProjectDependencies","indicator_class":"OUTCOME","proof_choice":"COHERENCE","stage":"PROJECT_GRAPH","step":"BIND_EIGHT_TYPED_DEPENDENCIES","reason":"PROJECT_DEPENDENCY_GRAPH_MISMATCH","next_operation":"RESTORE_DECLARED_PROJECT_DEPENDENCIES"},
+    {"id":"JSON_PACKET","activity":"GenerateJSONProjectPacket","indicator_class":"OUTCOME","proof_choice":"COHERENCE","stage":"PACKET_GENERATION","step":"GENERATE_JSON_PROJECT_PACKET","reason":"JSON_PROJECT_PACKET_INVALID","next_operation":"REGENERATE_JSON_PROJECT_PACKET"},
+    {"id":"MARKDOWN_PACKET","activity":"GenerateMarkdownProjectPacket","indicator_class":"OUTCOME","proof_choice":"COHERENCE","stage":"PACKET_GENERATION","step":"GENERATE_MARKDOWN_PROJECT_PACKET","reason":"MARKDOWN_PROJECT_PACKET_INVALID","next_operation":"REGENERATE_MARKDOWN_PROJECT_PACKET"},
+    {"id":"UNKNOWN_RECOVERY","activity":"PreserveUnknownRecoveryCoordinates","indicator_class":"GUARDRAIL","proof_choice":"REGRESSION","stage":"UNKNOWN_RECOVERY","step":"PRESERVE_UNKNOWN_COORDINATES","reason":"UNKNOWN_RECOVERY_COORDINATES_INVALID","next_operation":"RESTORE_UNKNOWN_RECOVERY_FIXTURE"},
+    {"id":"REFUTED_BOUNDARIES","activity":"PreserveRefutedProjectBoundaries","indicator_class":"GUARDRAIL","proof_choice":"REGRESSION","stage":"REFUTED_BOUNDARIES","step":"PRESERVE_THREE_REFUTED_BOUNDARIES","reason":"REFUTED_PROJECT_BOUNDARIES_INVALID","next_operation":"RESTORE_REFUTED_BOUNDARY_FIXTURES"},
+    {"id":"DETERMINISTIC_REPLAY","activity":"ReplaySemanticProjectPacket","indicator_class":"DRIVER","proof_choice":"REGRESSION","stage":"REPLAY","step":"COMPARE_GENERATED_PROJECT_PACKET","reason":"PROJECT_PACKET_REPLAY_MISMATCH","next_operation":"RESTORE_DETERMINISTIC_PROJECTOR"},
+    {"id":"READ_ONLY_BOUNDARY","activity":"PreserveReadOnlyProjectBoundary","indicator_class":"GUARDRAIL","proof_choice":"REGRESSION","stage":"AUTHORITY","step":"OBSERVE_READ_ONLY_PROJECT_BOUNDARY","reason":"READ_ONLY_PROJECT_BOUNDARY_VIOLATED","next_operation":"REMOVE_REPOSITORY_MUTATION_AUTHORITY"}
+  ]
+}
