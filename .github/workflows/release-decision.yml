@@ -1,0 +1,135 @@
+name: Local release decision
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decision:
+    runs-on: ubuntu-latest
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SUBJECT_SHA }}
+
+      - name: Bind exact subject identity
+        run: test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+
+      - name: Observe and download released Gooo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          lock=contracts/core-release-lock-v1.json
+          repository=$(jq -r .repository "$lock")
+          tag=$(jq -r .tag "$lock")
+          gh api "repos/$repository/releases/tags/$tag" > "$RUNNER_TEMP/release.json"
+          gh api "repos/$repository/git/ref/tags/$tag" > "$RUNNER_TEMP/ref.json"
+          object_sha=$(jq -r '.object.sha' "$RUNNER_TEMP/ref.json")
+          gh api "repos/$repository/git/tags/$object_sha" > "$RUNNER_TEMP/tag.json"
+          jq -e --slurpfile ref "$RUNNER_TEMP/ref.json" --slurpfile tag "$RUNNER_TEMP/tag.json" \
+            '.tag_name=="v0.1.0-dev" and .draft==false and .prerelease==true and $ref[0].object.type=="tag" and
+             $ref[0].object.sha=="b0f6d7efcd6f6a2f8da177781a2cd8cef9defa31" and
+             $tag[0].object.sha=="cf07bc02cda5cc0a05019d2ad63faeb3fa9edb28"' "$RUNNER_TEMP/release.json" >/dev/null
+          binary=$(jq -r '.consumer.binary_asset' "$lock")
+          checksums=$(jq -r '.consumer.checksum_asset' "$lock")
+          mkdir -p "$RUNNER_TEMP/release-assets" "$RUNNER_TEMP/gooo"
+          for name in "$binary" "$checksums"; do
+            url=$(jq -r --arg name "$name" '.assets[]|select(.name==$name)|.browser_download_url' "$RUNNER_TEMP/release.json")
+            curl --fail --location --retry 3 "$url" --output "$RUNNER_TEMP/release-assets/$name"
+          done
+          actual="sha256:$(sha256sum "$RUNNER_TEMP/release-assets/$binary" | awk '{print $1}')"
+          locked=$(jq -r --arg name "$binary" '.assets[]|select(.name==$name)|.digest' "$lock")
+          indexed="sha256:$(awk -v name="$binary" '$2==name {print $1}' "$RUNNER_TEMP/release-assets/$checksums")"
+          test "$actual" = "$locked"
+          test "$actual" = "$indexed"
+          tar -xzf "$RUNNER_TEMP/release-assets/$binary" -C "$RUNNER_TEMP/gooo"
+
+      - name: Observe compiler, resources, and repository effects
+        run: |
+          set -euo pipefail
+          candidate=examples/release-candidate
+          before="$RUNNER_TEMP/before.bin"
+          after="$RUNNER_TEMP/after.bin"
+          git status --porcelain=v1 -z --untracked-files=all > "$before"
+          "$RUNNER_TEMP/gooo/gooo" version --json > "$RUNNER_TEMP/version.json"
+          "$RUNNER_TEMP/gooo/gooo" check --json "$candidate/project.gooo" > "$RUNNER_TEMP/syntax.json"
+          "$RUNNER_TEMP/gooo/gooo" check --semantic --json "$candidate/project.gooo" > "$RUNNER_TEMP/semantic.json"
+          start_ns=$(date +%s%N)
+          /usr/bin/time -v -o "$RUNNER_TEMP/time.txt" "$RUNNER_TEMP/gooo/gooo" graph dump "$candidate/project.gooo" > "$RUNNER_TEMP/graph.json"
+          end_ns=$(date +%s%N)
+          wall_ms=$(( (end_ns - start_ns) / 1000000 ))
+          peak_rss_kib=$(awk -F: '/Maximum resident set size/ {gsub(/ /,"",$2); print $2}' "$RUNNER_TEMP/time.txt")
+          expected_source_digest=$(bash scripts/source-snapshot.sh "$candidate")
+          git status --porcelain=v1 -z --untracked-files=all > "$after"
+          if cmp -s "$before" "$after"; then writes=0; else writes=1; fi
+          before_digest="sha256:$(sha256sum "$before" | awk '{print $1}')"
+          after_digest="sha256:$(sha256sum "$after" | awk '{print $1}')"
+          jq -n \
+            --arg head "$SUBJECT_SHA" --arg expected_source_digest "$expected_source_digest" \
+            --arg before_digest "$before_digest" --arg after_digest "$after_digest" \
+            --argjson writes "$writes" --argjson wall_ms "$wall_ms" --argjson peak_rss_kib "$peak_rss_kib" \
+            --slurpfile version "$RUNNER_TEMP/version.json" --slurpfile syntax "$RUNNER_TEMP/syntax.json" \
+            --slurpfile semantic "$RUNNER_TEMP/semantic.json" --slurpfile graph "$RUNNER_TEMP/graph.json" \
+            '{schema:"gooo/local-ledger/runtime-observation/v1",subject_sha:$head,expected_source_digest:$expected_source_digest,
+              version:$version[0],syntax_check:$syntax[0],semantic_check:$semantic[0],graph:$graph[0],
+              performance:{graph_peak_rss_kib:$peak_rss_kib,graph_wall_ms:$wall_ms},
+              repository:{before_digest:$before_digest,after_digest:$after_digest,writes:$writes}}' > "$RUNNER_TEMP/runtime.json"
+
+      - name: Evaluate ready, unknown, and refuted views
+        run: |
+          set -euo pipefail
+          candidate=examples/release-candidate
+          bash scripts/evaluate.sh "$GITHUB_WORKSPACE" "$candidate" "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/ready.json" "$SUBJECT_SHA" ready
+          bash scripts/evaluate.sh "$GITHUB_WORKSPACE" "$candidate" "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/replay.json" "$SUBJECT_SHA" ready
+          cmp -s "$RUNNER_TEMP/ready.json" "$RUNNER_TEMP/replay.json"
+          jq -e '.decision=="RELEASE_READY" and .summary=={total:12,closed:12,unknown:0,refuted:0,repository_writes:0} and
+            .authority.activity_bindings==12 and ([.proofs[]|select(.closed==.total)]|length)==3' "$RUNNER_TEMP/ready.json" >/dev/null
+
+          cp -R "$candidate" "$RUNNER_TEMP/missing-runbook"
+          rm "$RUNNER_TEMP/missing-runbook/docs/runbook.md"
+          bash scripts/evaluate.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/missing-runbook" "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/missing-runbook.json" "$SUBJECT_SHA" missing-runbook
+          jq -e '.decision=="NOT_READY" and .summary.closed==10 and .summary.unknown==2 and .summary.refuted==0 and
+            .claim.stage=="OPERATIONS" and .claim.step=="OBSERVE_RUNBOOK" and .claim.reason=="OPERATIONS_RUNBOOK_UNAVAILABLE" and
+            .claim.next_operation=="PROVIDE_OPERATIONS_RUNBOOK"' "$RUNNER_TEMP/missing-runbook.json" >/dev/null
+
+          cp -R "$candidate" "$RUNNER_TEMP/source-mutated"
+          printf '\n// mutation\n' >> "$RUNNER_TEMP/source-mutated/src/main.go"
+          bash scripts/evaluate.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/source-mutated" "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/source-refuted.json" "$SUBJECT_SHA" source-mutated
+          jq -e '.decision=="FAIL_CLOSED" and .summary.refuted==2 and .claim.stage=="SOURCE" and
+            .claim.step=="VERIFY_SOURCE_SNAPSHOT" and .claim.reason=="SOURCE_SNAPSHOT_MISMATCH"' "$RUNNER_TEMP/source-refuted.json" >/dev/null
+
+      - name: Publish exact user indicators
+        run: |
+          {
+            echo '## Local project release decision'
+            echo
+            jq -r '"- decision: \(.decision)",
+              "- readiness: \(.summary.closed)/\(.summary.total) CLOSED; UNKNOWN \(.summary.unknown); REFUTED \(.summary.refuted)",
+              (.indicators[] | if has("total") then "- \(.id): \(.value)/\(.total) \(.unit) [\(.state)]" else "- \(.id): \(.value) \(.unit) [\(.state)]" end),
+              "- deterministic replay: true",
+              "- local test executions: 0"' "$RUNNER_TEMP/ready.json"
+            echo
+            jq -r '"- missing-runbook decision: \(.decision) at \(.claim.stage) / \(.claim.step) / \(.claim.reason); next \(.claim.next_operation)"' "$RUNNER_TEMP/missing-runbook.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce read-only repository effect
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: local-ledger-${{ env.SUBJECT_SHA }}
+          path: |
+            ${{ runner.temp }}/runtime.json
+            ${{ runner.temp }}/ready.json
+            ${{ runner.temp }}/replay.json
+            ${{ runner.temp }}/missing-runbook.json
+            ${{ runner.temp }}/source-refuted.json
