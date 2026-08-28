@@ -114,13 +114,13 @@ jq -S -n \
   (if $denominator_ok then closed(cell("READINESS_DENOMINATOR")) else refuted_direct(cell("READINESS_DENOMINATOR");"READINESS_DENOMINATOR_MISMATCH";"RESTORE_READINESS_DENOMINATOR") end) as $c3 |
   (if $classification_ok then closed(cell("UNKNOWN_CLASSIFICATION")) else refuted_direct(cell("UNKNOWN_CLASSIFICATION");"UNKNOWN_CLASSIFICATION_MISMATCH";"RESTORE_UNKNOWN_CLASSIFICATION") end) as $direct4 |
   with_dependencies(cell("UNKNOWN_CLASSIFICATION");[$c3];$direct4) as $c4 |
-  (if not (projection_available($ready_projection[0]) and receipt_available($ready_receipt[0])) then unknown_direct(cell("CLOSED_CLAIM_RECEIPT");"PROJECTED_CLOSED_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_CLOSED_READINESS_CLAIM")
+  (if ((projection_available($ready_projection[0]) and receipt_available($ready_receipt[0])) | not) then unknown_direct(cell("CLOSED_CLAIM_RECEIPT");"PROJECTED_CLOSED_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_CLOSED_READINESS_CLAIM")
     elif $ready_match then closed(cell("CLOSED_CLAIM_RECEIPT")) else refuted_direct(cell("CLOSED_CLAIM_RECEIPT");"PROJECTED_CLOSED_CLAIM_TUPLE_MISMATCH";"RESTORE_CLOSED_CLAIM_PROJECTION") end) as $direct5 |
   with_dependencies(cell("CLOSED_CLAIM_RECEIPT");[$c1,$c2,$c3,$c4];$direct5) as $c5 |
-  (if not (projection_available($unknown_projection[0]) and receipt_available($unknown_receipt[0])) then unknown_direct(cell("UNKNOWN_CLAIM_RECEIPT");"PROJECTED_UNKNOWN_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_UNKNOWN_READINESS_CLAIM")
+  (if ((projection_available($unknown_projection[0]) and receipt_available($unknown_receipt[0])) | not) then unknown_direct(cell("UNKNOWN_CLAIM_RECEIPT");"PROJECTED_UNKNOWN_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_UNKNOWN_READINESS_CLAIM")
     elif $unknown_match then closed(cell("UNKNOWN_CLAIM_RECEIPT")) else refuted_direct(cell("UNKNOWN_CLAIM_RECEIPT");"PROJECTED_UNKNOWN_CLAIM_TUPLE_MISMATCH";"RESTORE_UNKNOWN_CLAIM_PROJECTION") end) as $direct6 |
   with_dependencies(cell("UNKNOWN_CLAIM_RECEIPT");[$c1,$c2,$c3,$c4];$direct6) as $c6 |
-  (if not (projection_available($refuted_projection[0]) and receipt_available($refuted_receipt[0])) then unknown_direct(cell("REFUTED_CLAIM_RECEIPT");"PROJECTED_REFUTED_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_REFUTED_READINESS_CLAIM")
+  (if ((projection_available($refuted_projection[0]) and receipt_available($refuted_receipt[0])) | not) then unknown_direct(cell("REFUTED_CLAIM_RECEIPT");"PROJECTED_REFUTED_CLAIM_RECEIPT_UNAVAILABLE";"RESOLVE_REFUTED_READINESS_CLAIM")
     elif $refuted_match then closed(cell("REFUTED_CLAIM_RECEIPT")) else refuted_direct(cell("REFUTED_CLAIM_RECEIPT");"PROJECTED_REFUTED_CLAIM_TUPLE_MISMATCH";"RESTORE_REFUTED_CLAIM_PROJECTION") end) as $direct7 |
   with_dependencies(cell("REFUTED_CLAIM_RECEIPT");[$c1,$c2,$c3,$c4];$direct7) as $c7 |
   with_dependencies(cell("CLAIM_COMPARISON");[$c5,$c6,$c7];closed(cell("CLAIM_COMPARISON"))) as $c8 |
