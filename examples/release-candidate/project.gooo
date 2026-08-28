@@ -1,0 +1,28 @@
+package ledgercandidate
+namespace localledger
+
+entity ProjectManifest id "local://ledger/entity/project-manifest"
+entity SourceSnapshot id "local://ledger/entity/source-snapshot"
+entity ProjectInventory id "local://ledger/entity/project-inventory"
+entity LanguageLineInventory id "local://ledger/entity/language-line-inventory"
+entity BuildEntrypoint id "local://ledger/entity/build-entrypoint"
+entity ProjectOverview id "local://ledger/entity/project-overview"
+entity OperationsRunbook id "local://ledger/entity/operations-runbook"
+entity ReleaseNotes id "local://ledger/entity/release-notes"
+entity GoooReceiptSet id "local://ledger/entity/gooo-receipt-set"
+entity ResourceSample id "local://ledger/entity/resource-sample"
+entity ReadOnlyObservation id "local://ledger/entity/read-only-observation"
+entity ReleaseDecision id "local://ledger/entity/release-decision"
+
+activity DeclareProjectAuthority(ProjectManifest) -> ReleaseDecision
+activity ObserveSourceSnapshot(SourceSnapshot) -> ReleaseDecision
+activity CountProjectInventory(ProjectInventory) -> ReleaseDecision
+activity CountLanguageLines(LanguageLineInventory) -> ReleaseDecision
+activity ObserveBuildEntrypoint(BuildEntrypoint) -> ReleaseDecision
+activity ObserveProjectDocumentation(ProjectOverview) -> ReleaseDecision
+activity ObserveOperationsRunbook(OperationsRunbook) -> ReleaseDecision
+activity ObserveReleaseNotes(ReleaseNotes) -> ReleaseDecision
+activity BindReleasedGoooSemantics(GoooReceiptSet) -> ReleaseDecision
+activity ObserveResourceUsage(ResourceSample) -> ReleaseDecision
+activity ObserveReadOnlyEffect(ReadOnlyObservation) -> ReleaseDecision
+activity CloseReleaseDecision(ReleaseDecision) -> ReleaseDecision

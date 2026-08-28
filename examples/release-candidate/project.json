@@ -1,0 +1,12 @@
+{
+  "schema": "gooo/local-ledger/project/v1",
+  "id": "local://project/release-candidate",
+  "name": "release-candidate",
+  "authority": "project.gooo",
+  "source_paths": ["project.gooo", "src/main.go"],
+  "required_paths": ["project.gooo", "src/main.go", "docs/overview.md", "docs/runbook.md", "CHANGELOG.md"],
+  "documentation": "docs/overview.md",
+  "operations_runbook": "docs/runbook.md",
+  "release_notes": "CHANGELOG.md",
+  "build_entrypoint": "src/main.go"
+}

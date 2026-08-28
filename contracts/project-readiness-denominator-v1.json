@@ -1,0 +1,24 @@
+{
+  "schema": "gooo/local-ledger/readiness-denominator/v1",
+  "id": "gooo://denominator/local-ledger-release-readiness-v1",
+  "target_cells": 12,
+  "cells": [
+    {"ordinal":1,"id":"PROJECT_AUTHORITY","activity":"DeclareProjectAuthority","stage":"AUTHORITY","step":"PARSE_PROJECT_MANIFEST","proof_choice":"FOUNDATION","closed_reason":"PROJECT_AUTHORITY_DECLARED","unknown_reason":"PROJECT_AUTHORITY_UNAVAILABLE","next_operation":"PROVIDE_PROJECT_MANIFEST"},
+    {"ordinal":2,"id":"SOURCE_SNAPSHOT","activity":"ObserveSourceSnapshot","stage":"SOURCE","step":"VERIFY_SOURCE_SNAPSHOT","proof_choice":"FOUNDATION","closed_reason":"SOURCE_SNAPSHOT_MATCHES","unknown_reason":"SOURCE_SNAPSHOT_UNAVAILABLE","next_operation":"OBSERVE_SOURCE_SNAPSHOT"},
+    {"ordinal":3,"id":"FILE_INVENTORY","activity":"CountProjectInventory","stage":"INVENTORY","step":"COUNT_FILES_AND_DIRECTORIES","proof_choice":"FOUNDATION","closed_reason":"PROJECT_INVENTORY_OBSERVED","unknown_reason":"PROJECT_INVENTORY_UNAVAILABLE","next_operation":"COUNT_PROJECT_INVENTORY"},
+    {"ordinal":4,"id":"LANGUAGE_LINES","activity":"CountLanguageLines","stage":"INVENTORY","step":"COUNT_LANGUAGE_LINES","proof_choice":"FOUNDATION","closed_reason":"LANGUAGE_LINES_OBSERVED","unknown_reason":"LANGUAGE_LINES_UNAVAILABLE","next_operation":"COUNT_LANGUAGE_LINES"},
+    {"ordinal":5,"id":"BUILD_ENTRYPOINT","activity":"ObserveBuildEntrypoint","stage":"BUILD","step":"OBSERVE_GO_ENTRYPOINT","proof_choice":"COHERENCE","closed_reason":"GO_ENTRYPOINT_OBSERVED","unknown_reason":"GO_ENTRYPOINT_UNAVAILABLE","next_operation":"PROVIDE_GO_ENTRYPOINT"},
+    {"ordinal":6,"id":"DOCUMENTATION","activity":"ObserveProjectDocumentation","stage":"DOCUMENTATION","step":"OBSERVE_PROJECT_OVERVIEW","proof_choice":"COHERENCE","closed_reason":"PROJECT_OVERVIEW_OBSERVED","unknown_reason":"PROJECT_OVERVIEW_UNAVAILABLE","next_operation":"PROVIDE_PROJECT_OVERVIEW"},
+    {"ordinal":7,"id":"OPERATIONS_RUNBOOK","activity":"ObserveOperationsRunbook","stage":"OPERATIONS","step":"OBSERVE_RUNBOOK","proof_choice":"COHERENCE","closed_reason":"OPERATIONS_RUNBOOK_OBSERVED","unknown_reason":"OPERATIONS_RUNBOOK_UNAVAILABLE","next_operation":"PROVIDE_OPERATIONS_RUNBOOK"},
+    {"ordinal":8,"id":"RELEASE_NOTES","activity":"ObserveReleaseNotes","stage":"RELEASE","step":"OBSERVE_RELEASE_NOTES","proof_choice":"COHERENCE","closed_reason":"RELEASE_NOTES_OBSERVED","unknown_reason":"RELEASE_NOTES_UNAVAILABLE","next_operation":"PROVIDE_RELEASE_NOTES"},
+    {"ordinal":9,"id":"RELEASED_GOOO_BINDING","activity":"BindReleasedGoooSemantics","stage":"COMPILER","step":"OBSERVE_RELEASED_GOOO_RECEIPTS","proof_choice":"FOUNDATION","closed_reason":"RELEASED_GOOO_SEMANTICS_BOUND","unknown_reason":"RELEASED_GOOO_RECEIPTS_UNAVAILABLE","next_operation":"EXECUTE_RELEASED_GOOO_CLI"},
+    {"ordinal":10,"id":"RESOURCE_SAMPLE","activity":"ObserveResourceUsage","stage":"RESOURCE","step":"SAMPLE_RESOURCE_USAGE","proof_choice":"REGRESSION","closed_reason":"RESOURCE_USAGE_OBSERVED","unknown_reason":"RESOURCE_USAGE_UNAVAILABLE","next_operation":"SAMPLE_RELEASED_CLI_RESOURCES"},
+    {"ordinal":11,"id":"READ_ONLY_EFFECT","activity":"ObserveReadOnlyEffect","stage":"EFFECT","step":"OBSERVE_READ_ONLY_EFFECT","proof_choice":"REGRESSION","closed_reason":"REPOSITORY_ZERO_WRITE_OBSERVED","unknown_reason":"REPOSITORY_EFFECT_UNAVAILABLE","next_operation":"COMPARE_REPOSITORY_SNAPSHOTS"},
+    {"ordinal":12,"id":"USER_DECISION","activity":"CloseReleaseDecision","stage":"USER","step":"CLOSE_RELEASE_DECISION","proof_choice":"REGRESSION","closed_reason":"RELEASE_DECISION_CLOSED","unknown_reason":"RELEASE_DECISION_BLOCKED","next_operation":"RESOLVE_FIRST_UNKNOWN"}
+  ],
+  "proof_totals": [
+    {"proof_choice":"FOUNDATION","total":5},
+    {"proof_choice":"COHERENCE","total":4},
+    {"proof_choice":"REGRESSION","total":3}
+  ]
+}
