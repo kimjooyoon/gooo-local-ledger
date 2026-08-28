@@ -29,6 +29,20 @@ unsupported_receipt="$output/evidence/unsupported-kind.json"
 ambiguous_receipt="$output/evidence/ambiguous-producer.json"
 cycle_receipt="$output/evidence/cycle.json"
 
+report_failure() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "semantic project plan generation failed with status $status" >&2
+    for receipt in "$closed_receipt" "$missing_receipt" "$unsupported_receipt" "$ambiguous_receipt" "$cycle_receipt"; do
+      if [ -s "$receipt" ]; then
+        echo "=== $receipt ===" >&2
+        cat "$receipt" >&2
+      fi
+    done
+  fi
+}
+trap report_failure EXIT
+
 "$gooo" claim dependencies "$project" --json > "$closed_receipt"
 
 run_nonclosed() {
