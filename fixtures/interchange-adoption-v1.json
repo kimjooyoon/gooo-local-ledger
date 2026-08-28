@@ -1,0 +1,23 @@
+{
+  "schema": "gooo/local-ledger/interchange-adoption-profile/v1",
+  "fixture_id": "local-ledger-interchange-adoption",
+  "domain": "local-ledger",
+  "project": {
+    "id": "gooo://project/local-ledger",
+    "repository": "kimjooyoon/gooo-local-ledger",
+    "release_tag": "v0.4.0-dev",
+    "source_path": "fixtures/generated-project-v2.json"
+  },
+  "relation": {
+    "id": "gooo://interchange/relation/local-ledger-adopts-v1",
+    "kind": "ADOPTS_INTERCHANGE_ENVELOPE",
+    "state": "MATCH",
+    "left": {"kind": "gooo/local-ledger/readiness-report/v1", "id": "local://claim/release-readiness"},
+    "right": {"kind": "gooo/interchange/specification-report/v1", "id": "gooo://interchange/specification/v0.1.0-dev"},
+    "stage": "ADOPTION",
+    "step": "VERIFY_PINNED_INTERCHANGE_SPECIFICATION",
+    "reason": "PINNED_INTERCHANGE_SPECIFICATION_MATCH",
+    "unknown_class": null,
+    "next_operation": "NONE"
+  }
+}
