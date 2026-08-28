@@ -1,4 +1,5 @@
 package semanticprojectplanmissing
+namespace semanticprojectplanmissing
 
 entity MissingProjectIntent id "local://semantic-project-plan/missing/project-intent"
 entity PlannedWork id "local://semantic-project-plan/missing/planned-work"

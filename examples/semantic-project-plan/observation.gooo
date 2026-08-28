@@ -1,4 +1,5 @@
 package semanticprojectplanobservation
+namespace semanticprojectplanobservation
 
 entity CoreReleaseReceipt id "local://semantic-project-plan/observation/core-release"
 entity ReleaseEligibilityReceipt id "local://semantic-project-plan/observation/release-eligibility"

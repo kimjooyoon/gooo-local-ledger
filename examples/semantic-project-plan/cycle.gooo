@@ -1,4 +1,5 @@
 package semanticprojectplancycle
+namespace semanticprojectplancycle
 
 entity ProjectState id "local://semantic-project-plan/cycle/project"
 entity WorkState id "local://semantic-project-plan/cycle/work"

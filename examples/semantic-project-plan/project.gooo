@@ -1,4 +1,5 @@
 package semanticprojectplan
+namespace semanticprojectplan
 
 entity ProjectIntent id "local://project/semantic-release-plan/intent"
 entity ClaimDependencyPrimitive id "gooo://core/release/v0.4.0-dev/claim-dependency-causality"

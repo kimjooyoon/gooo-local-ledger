@@ -1,4 +1,5 @@
 package semanticprojectplanunsupported
+namespace semanticprojectplanunsupported
 
 entity ProjectSeed id "local://semantic-project-plan/unsupported/seed"
 entity ProjectState id "local://semantic-project-plan/unsupported/state"

@@ -1,4 +1,5 @@
 package semanticprojectplanambiguous
+namespace semanticprojectplanambiguous
 
 entity FirstSeed id "local://semantic-project-plan/ambiguous/first-seed"
 entity SecondSeed id "local://semantic-project-plan/ambiguous/second-seed"
