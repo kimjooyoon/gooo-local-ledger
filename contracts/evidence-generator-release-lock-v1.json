@@ -1,0 +1,19 @@
+{
+  "schema": "gooo/evidence-generator/release-lock/v1",
+  "repository": "kimjooyoon/gooo-evidence-generator",
+  "tag": "v0.2.1-dev",
+  "tag_object_sha": "b6f973768c5a579b5f1ba557d0c22fb6ed60c89c",
+  "target_commit_sha": "9982fbbb087d509239d6140a11263ce1ab9677b9",
+  "assets": [
+    {
+      "name": "gooo-evidence-generator-portable-v0.2.1-dev.tar.gz",
+      "sha256": "d50ad143bff03176aa3021e916c1503718f1e14294e22247755d14db070bba8b"
+    }
+  ],
+  "schemas": {
+    "project": "gooo/evidence-generator/project/v2",
+    "report": "gooo/evidence-generator/report/v2",
+    "manifest": "gooo/evidence-generator/manifest/v2",
+    "verification": "gooo/evidence-generator/verification/v2"
+  }
+}
