@@ -1,0 +1,25 @@
+package localclaimadoption
+namespace localclaimadoption
+
+entity CoreClaimResolutionRelease id "local://claim-adoption/core-release"
+entity ReleasedReadinessClaims id "local://claim-adoption/readiness-claims"
+entity ClaimInput id "local://claim-adoption/input"
+entity ClaimResolutionPrimitive id "gooo://claim-resolution/gooo.primitive.claim-resolution-tuple.v1"
+entity ClaimComparison id "local://claim-adoption/comparison"
+entity UnknownClassBoundary id "local://claim-adoption/unknown-class"
+entity ReleasedInventoryContext id "local://claim-adoption/inventory-context"
+entity ClaimReplay id "local://claim-adoption/replay"
+entity AdoptionDecision id "local://claim-adoption/decision"
+
+activity ObserveClaimResolutionRelease(CoreClaimResolutionRelease) -> AdoptionDecision
+activity ObserveReleasedReadinessClaims(ReleasedReadinessClaims) -> AdoptionDecision
+activity ResolveReleaseReadyClaim(ClaimInput) -> ClaimResolutionPrimitive computes "claim.resolve:v1;state=CLOSED;stage=NONE;step=NONE;reason=RELEASE_READINESS_CLOSED;unknown_class=NONE;next_operation=NONE"
+activity ResolveMissingRunbookClaim(ClaimInput) -> ClaimResolutionPrimitive computes "claim.resolve:v1;state=UNKNOWN;stage=OPERATIONS;step=OBSERVE_RUNBOOK;reason=OPERATIONS_RUNBOOK_UNAVAILABLE;unknown_class=DIRECT_MISSING;next_operation=PROVIDE_OPERATIONS_RUNBOOK"
+activity ResolveSourceMismatchClaim(ClaimInput) -> ClaimResolutionPrimitive computes "claim.resolve:v1;state=REFUTED;stage=SOURCE;step=VERIFY_SOURCE_SNAPSHOT;reason=SOURCE_SNAPSHOT_MISMATCH;unknown_class=NONE;next_operation=RESTORE_EXPECTED_SOURCE_SNAPSHOT"
+activity CompareReleasedReadinessClaims(ReleasedReadinessClaims) -> ClaimComparison
+activity BindUnknownClass(ClaimComparison) -> UnknownClassBoundary
+activity BindReleasedInventoryContext(ReleasedInventoryContext) -> ClaimComparison
+activity RejectIncompleteUnknown(ClaimInput) -> ClaimResolutionPrimitive computes "claim.resolve:v1;state=UNKNOWN;stage=OPERATIONS;step=OBSERVE_RUNBOOK;reason=OPERATIONS_RUNBOOK_UNAVAILABLE;unknown_class=NONE;next_operation=PROVIDE_OPERATIONS_RUNBOOK"
+activity RejectUnrecognizedState(ClaimInput) -> ClaimResolutionPrimitive computes "claim.resolve:v1;state=FIXED_POINT;stage=NONE;step=NONE;reason=UNRECOGNIZED_STATE;unknown_class=NONE;next_operation=NONE"
+activity ObserveClaimReplay(ClaimResolutionPrimitive) -> ClaimReplay
+activity RecordIndependentAdoption(ClaimComparison) -> AdoptionDecision
