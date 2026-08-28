@@ -1,0 +1,18 @@
+package semanticprojectplan
+namespace semanticprojectplan
+
+entity ProjectIntent id "local://project/semantic-release-plan/intent"
+entity ClaimDependencyPrimitive id "gooo://core/release/v0.4.0-dev/claim-dependency-causality"
+entity ProjectState id "local://project/semantic-release-plan/state/project"
+entity OutcomeState id "local://project/semantic-release-plan/state/outcome"
+entity EvidenceState id "local://project/semantic-release-plan/state/evidence"
+entity WorkState id "local://project/semantic-release-plan/state/work"
+entity BlockerState id "local://project/semantic-release-plan/state/blocker"
+entity MilestoneState id "local://project/semantic-release-plan/state/milestone"
+
+activity EstablishProject(ProjectIntent, ClaimDependencyPrimitive) -> ProjectState computes "claim.observe:recoverable|establish-project-from-intent-and-released-primitive"
+activity DefineOutcome(ProjectState) -> OutcomeState computes "claim.edge:requires|outcome-requires-established-project"
+activity GatherEvidence(ProjectState, OutcomeState) -> EvidenceState computes "claim.edge:supports|evidence-supports-project-outcome"
+activity SelectWork(OutcomeState, EvidenceState) -> WorkState computes "claim.edge:requires|work-requires-outcome-and-evidence"
+activity CheckBlocker(ProjectState, WorkState) -> BlockerState computes "claim.edge:contradicts|blocker-can-contradict-selected-work"
+activity CloseMilestone(BlockerState) -> MilestoneState computes "claim.edge:failure-entailment|unresolved-blocker-entails-milestone-failure"

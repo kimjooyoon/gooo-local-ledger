@@ -1,0 +1,40 @@
+package semanticprojectplanobservation
+namespace semanticprojectplanobservation
+
+entity CoreReleaseReceipt id "local://semantic-project-plan/observation/core-release"
+entity ReleaseEligibilityReceipt id "local://semantic-project-plan/observation/release-eligibility"
+entity ProjectProgramReceipt id "local://semantic-project-plan/observation/project-program"
+entity PacketContractReceipt id "local://semantic-project-plan/observation/packet-contract"
+entity DependencyCommandReceipt id "local://semantic-project-plan/observation/dependency-command"
+entity DependencyGraphReceipt id "local://semantic-project-plan/observation/dependency-graph"
+entity JSONPacketReceipt id "local://semantic-project-plan/observation/json-packet"
+entity MarkdownPacketReceipt id "local://semantic-project-plan/observation/markdown-packet"
+entity UnknownRecoveryReceipt id "local://semantic-project-plan/observation/unknown-recovery"
+entity RefutedBoundaryReceipt id "local://semantic-project-plan/observation/refuted-boundaries"
+entity ReplayReceipt id "local://semantic-project-plan/observation/replay"
+entity ReadOnlyReceipt id "local://semantic-project-plan/observation/read-only"
+entity CoreReleaseCell id "local://semantic-project-plan/cell/core-release"
+entity ReleaseEligibilityCell id "local://semantic-project-plan/cell/release-eligibility"
+entity ProjectProgramCell id "local://semantic-project-plan/cell/project-program"
+entity PacketContractCell id "local://semantic-project-plan/cell/packet-contract"
+entity DependencyCommandCell id "local://semantic-project-plan/cell/dependency-command"
+entity DependencyGraphCell id "local://semantic-project-plan/cell/dependency-graph"
+entity JSONPacketCell id "local://semantic-project-plan/cell/json-packet"
+entity MarkdownPacketCell id "local://semantic-project-plan/cell/markdown-packet"
+entity UnknownRecoveryCell id "local://semantic-project-plan/cell/unknown-recovery"
+entity RefutedBoundaryCell id "local://semantic-project-plan/cell/refuted-boundaries"
+entity ReplayCell id "local://semantic-project-plan/cell/replay"
+entity ReadOnlyCell id "local://semantic-project-plan/cell/read-only"
+
+activity ObserveCoreClaimDependencyRelease(CoreReleaseReceipt) -> CoreReleaseCell
+activity BindCoreReleaseEligibility(ReleaseEligibilityReceipt) -> ReleaseEligibilityCell
+activity ValidateSemanticProjectProgram(ProjectProgramReceipt) -> ProjectProgramCell
+activity BindProjectPacketContract(PacketContractReceipt) -> PacketContractCell
+activity ExecuteReleasedDependencyPlanner(DependencyCommandReceipt) -> DependencyCommandCell
+activity BindEightProjectDependencies(DependencyGraphReceipt) -> DependencyGraphCell
+activity GenerateJSONProjectPacket(JSONPacketReceipt) -> JSONPacketCell
+activity GenerateMarkdownProjectPacket(MarkdownPacketReceipt) -> MarkdownPacketCell
+activity PreserveUnknownRecoveryCoordinates(UnknownRecoveryReceipt) -> UnknownRecoveryCell
+activity PreserveRefutedProjectBoundaries(RefutedBoundaryReceipt) -> RefutedBoundaryCell
+activity ReplaySemanticProjectPacket(ReplayReceipt) -> ReplayCell
+activity PreserveReadOnlyProjectBoundary(ReadOnlyReceipt) -> ReadOnlyCell
