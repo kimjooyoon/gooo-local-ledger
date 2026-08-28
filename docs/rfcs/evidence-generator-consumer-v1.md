@@ -2,7 +2,7 @@
 
 ## Decision
 
-Consume the released `gooo-evidence-generator v0.2.1-dev` portable bundle in a
+Consume the released `gooo-evidence-generator v0.2.2-dev` portable bundle in a
 new parallel GitHub Actions workflow. Do not modify the existing local-ledger
 readiness workflow, evaluator, Gooo source, fixtures, or root README.
 
