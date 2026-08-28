@@ -1,0 +1,44 @@
+{
+  "schema": "gooo/local-ledger/released-domain-envelope-v2-adoption-release-lock/v1",
+  "kit": {
+    "repository": "kimjooyoon/gooo-interchange-spec",
+    "tag": "v0.3.0-dev",
+    "target_commit_sha": "ad3b1f4afca3cc3a8dba662804360e3fffd4aefb",
+    "ref_type": "commit",
+    "asset": {
+      "id": 534100046,
+      "name": "gooo-interchange-consumer-kit-v2.tar.gz",
+      "size": 7230,
+      "sha256": "a87fff90f4c80a9f8634275c7bc7c7bf2c42e5ccee7e4a686c8cff4efb33233c"
+    }
+  },
+  "product_evidence": {
+    "repository": "kimjooyoon/gooo-local-ledger",
+    "tag": "v0.8.0-dev",
+    "release_id": 378593792,
+    "target_commit_sha": "7e80cbc84f76e8176436e0488886649761ed3aaf",
+    "ref_type": "commit",
+    "asset": {
+      "id": 534008388,
+      "name": "project-plan.json",
+      "size": 6644,
+      "sha256": "7695be29459bb5b03c5af9d0518a925b90a4e56ccb13c573128ef52668c96f75"
+    }
+  },
+  "authority": {
+    "released_inputs_only": true,
+    "projection_owner": "LOCAL_LEDGER",
+    "envelope_format_owner": "INTERCHANGE_SPECIFICATION",
+    "product_generation_authorized": false,
+    "generation_output_scope": "CALLER_OWNED_TEMP_OUTPUT_ONLY",
+    "repository_writes": 0,
+    "local_test_executions": 0,
+    "cross_project_required_gates": 0,
+    "automatic_merge_allowed": false,
+    "release_adoption_observed": 0,
+    "release_adoption_total": 1,
+    "external_utility_observed": 0,
+    "external_utility_total": 1,
+    "external_utility_state": "UNKNOWN"
+  }
+}

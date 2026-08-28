@@ -1,0 +1,359 @@
+name: Released-domain envelope v2 adoption candidate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  released-domain-envelope-v2:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WORK_DIR: /tmp/gooo-released-domain-envelope-v2
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.x
+          check-latest: true
+
+      - name: Bind candidate subject
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SUBJECT_SHA=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_ENV"
+
+      - name: Download immutable released kit and product evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$WORK_DIR"
+          mkdir -p "$WORK_DIR/kit" "$WORK_DIR/product" "$WORK_DIR/core"
+
+          lock=contracts/released-domain-envelope-v2-adoption-release-lock-v1.json
+          kit_repo=$(jq -r '.kit.repository' "$lock")
+          kit_tag=$(jq -r '.kit.tag' "$lock")
+          kit_target=$(jq -r '.kit.target_commit_sha' "$lock")
+          kit_asset_id=$(jq -r '.kit.asset.id' "$lock")
+          kit_asset_name=$(jq -r '.kit.asset.name' "$lock")
+          kit_asset_size=$(jq -r '.kit.asset.size' "$lock")
+          kit_asset_sha=$(jq -r '.kit.asset.sha256' "$lock")
+
+          gh api "repos/$kit_repo/git/ref/tags/$kit_tag" > "$WORK_DIR/kit-ref.json"
+          jq -e --arg target "$kit_target" '.object.type=="commit" and .object.sha==$target' "$WORK_DIR/kit-ref.json" >/dev/null
+          gh api "repos/$kit_repo/releases/tags/$kit_tag" > "$WORK_DIR/kit-release.json"
+          jq -e --arg tag "$kit_tag" --argjson asset_id "$kit_asset_id" --arg name "$kit_asset_name" --argjson size "$kit_asset_size" --arg digest "sha256:$kit_asset_sha" '
+            .tag_name==$tag and .draft==false and .prerelease==true and
+            ([.assets[]|select(.id==$asset_id and .name==$name and .size==$size and .digest==$digest)]|length)==1
+          ' "$WORK_DIR/kit-release.json" >/dev/null
+          gh api -H 'Accept: application/octet-stream' "repos/$kit_repo/releases/assets/$kit_asset_id" > "$WORK_DIR/kit/$kit_asset_name"
+          test "$(wc -c < "$WORK_DIR/kit/$kit_asset_name" | tr -d ' ')" = "$kit_asset_size"
+          test "$(sha256sum "$WORK_DIR/kit/$kit_asset_name" | awk '{print $1}')" = "$kit_asset_sha"
+          tar -xzf "$WORK_DIR/kit/$kit_asset_name" -C "$WORK_DIR/kit"
+          kit_root="$WORK_DIR/kit/consumer-kit-v2"
+          test -x "$kit_root/scripts/conform-released-envelope-v2.sh" || chmod +x "$kit_root/scripts/conform-released-envelope-v2.sh"
+          for file in \
+            manifest.json SHA256SUMS \
+            contracts/released-domain-envelope-denominator-v2.json \
+            schemas/conformance-v2.schema.json schemas/evidence-v2.schema.json \
+            schemas/project-v2.schema.json schemas/relation-v2.schema.json \
+            schemas/replay-v2.schema.json schemas/resolution-v2.schema.json \
+            scripts/conform-released-envelope-v2.sh; do
+            test -f "$kit_root/$file"
+          done
+          (cd "$kit_root" && sha256sum -c SHA256SUMS)
+
+          product_repo=$(jq -r '.product_evidence.repository' "$lock")
+          product_tag=$(jq -r '.product_evidence.tag' "$lock")
+          product_release_id=$(jq -r '.product_evidence.release_id' "$lock")
+          product_target=$(jq -r '.product_evidence.target_commit_sha' "$lock")
+          product_asset_id=$(jq -r '.product_evidence.asset.id' "$lock")
+          product_asset_name=$(jq -r '.product_evidence.asset.name' "$lock")
+          product_asset_size=$(jq -r '.product_evidence.asset.size' "$lock")
+          product_asset_sha=$(jq -r '.product_evidence.asset.sha256' "$lock")
+          gh api "repos/$product_repo/git/ref/tags/$product_tag" > "$WORK_DIR/product-ref.json"
+          jq -e --arg target "$product_target" '.object.type=="commit" and .object.sha==$target' "$WORK_DIR/product-ref.json" >/dev/null
+          gh api "repos/$product_repo/releases/tags/$product_tag" > "$WORK_DIR/product-release.json"
+          jq -e --arg tag "$product_tag" --argjson release_id "$product_release_id" --argjson asset_id "$product_asset_id" --arg name "$product_asset_name" --argjson size "$product_asset_size" --arg digest "sha256:$product_asset_sha" '
+            .tag_name==$tag and .id==$release_id and .draft==false and .prerelease==true and
+            ([.assets[]|select(.id==$asset_id and .name==$name and .size==$size and .digest==$digest)]|length)==1
+          ' "$WORK_DIR/product-release.json" >/dev/null
+          gh api -H 'Accept: application/octet-stream' "repos/$product_repo/releases/assets/$product_asset_id" > "$WORK_DIR/product/$product_asset_name"
+          test "$(wc -c < "$WORK_DIR/product/$product_asset_name" | tr -d ' ')" = "$product_asset_size"
+          test "$(sha256sum "$WORK_DIR/product/$product_asset_name" | awk '{print $1}')" = "$product_asset_sha"
+
+          core_lock=contracts/semantic-project-plan-release-lock-v1.json
+          core_repo=$(jq -r '.core.repository' "$core_lock")
+          core_tag=$(jq -r '.core.tag' "$core_lock")
+          core_target=$(jq -r '.core.target_commit_sha' "$core_lock")
+          core_asset_name=$(jq -r '.core.assets.linux.name' "$core_lock")
+          core_asset_sha=$(jq -r '.core.assets.linux.sha256' "$core_lock")
+          gh api "repos/$core_repo/releases/tags/$core_tag" > "$WORK_DIR/core-release.json"
+          remote_sha=$(git ls-remote "https://github.com/$core_repo.git" "refs/tags/$core_tag" | awk '{print $1}')
+          test "$remote_sha" = "$core_target"
+          core_asset_url=$(jq -r --arg name "$core_asset_name" '.assets[]|select(.name==$name)|.url' "$WORK_DIR/core-release.json")
+          test -n "$core_asset_url"
+          gh api -H 'Accept: application/octet-stream' "$core_asset_url" > "$WORK_DIR/core/$core_asset_name"
+          test "$(sha256sum "$WORK_DIR/core/$core_asset_name" | awk '{print $1}')" = "$core_asset_sha"
+          mkdir -p "$WORK_DIR/core/bin"
+          tar -xzf "$WORK_DIR/core/$core_asset_name" -C "$WORK_DIR/core/bin"
+          gooo_path=$(find "$WORK_DIR/core/bin" -type f -name gooo -print -quit)
+          test -n "$gooo_path"
+          chmod +x "$gooo_path"
+          printf '%s\n' "$gooo_path" > "$WORK_DIR/gooo-path"
+
+          jq -S -n --arg kit_repo "$kit_repo" --arg kit_tag "$kit_tag" --arg kit_target "$kit_target" --arg kit_sha "$kit_asset_sha" --arg product_repo "$product_repo" --arg product_tag "$product_tag" --arg product_target "$product_target" --arg product_sha "$product_asset_sha" --arg core_repo "$core_repo" --arg core_tag "$core_tag" --arg core_target "$core_target" --arg core_sha "$core_asset_sha" '{schema:"gooo/local-ledger/released-domain-envelope-v2-immutable-inputs/v1",kit:{repository:$kit_repo,tag:$kit_tag,target_commit_sha:$kit_target,asset_sha256:$kit_sha,identity_verified:true},product_evidence:{repository:$product_repo,tag:$product_tag,target_commit_sha:$product_target,asset_sha256:$product_sha,identity_verified:true},core:{repository:$core_repo,tag:$core_tag,target_commit_sha:$core_target,asset_sha256:$core_sha,identity_verified:true},specification_repository_checkout:0,conformer_copy:0}' > "$WORK_DIR/immutable-inputs.json"
+
+      - name: Resolve 12 Gooo meta activities
+        shell: bash
+        run: |
+          set -euo pipefail
+          gooo=$(cat "$WORK_DIR/gooo-path")
+          source=examples/released-domain-envelope-v2/observation.gooo
+          denominator=contracts/released-domain-envelope-v2-adoption-denominator-v1.json
+          expected_cells=$(jq -r '.total' "$denominator")
+          "$gooo" check --json "$source" > "$WORK_DIR/meta-syntax.json"
+          "$gooo" check --semantic --json "$source" > "$WORK_DIR/meta-semantic.json"
+          "$gooo" graph dump "$source" > "$WORK_DIR/meta-graph.json"
+          jq -e '.status=="ok"' "$WORK_DIR/meta-syntax.json" "$WORK_DIR/meta-semantic.json" >/dev/null
+          jq -e --argjson expected_cells "$expected_cells" '([.nodes[]|select(.kind=="Activity")]|length)==$expected_cells' "$WORK_DIR/meta-graph.json" >/dev/null
+          mkdir -p "$WORK_DIR/core-resolutions"
+          while IFS=$'\t' read -r cell_id activity; do
+            printf -v receipt '%s/core-resolutions/%s-%s.json' "$WORK_DIR" "$cell_id" "$activity"
+            "$gooo" graph resolve-activity "$source" --name "$activity" > "$receipt"
+            jq -e --arg activity "$activity" '.schema=="gooo/activity-cardinality-resolution/v1" and .selector.name==$activity and .decision=="CLOSED" and .occurrences==1 and .claim.state=="CLOSED" and .claim.reason=="ACTIVITY_UNIQUELY_RESOLVED"' "$receipt" >/dev/null
+          done < <(jq -r '.cells[]|[.id,.activity]|@tsv' "$denominator")
+          jq -S -s 'sort_by(.selector.name)' "$WORK_DIR"/core-resolutions/*.json > "$WORK_DIR/core-receipts.json"
+          jq -e --argjson expected_cells "$expected_cells" 'length==$expected_cells and (map(.selector.name)|unique|length)==$expected_cells' "$WORK_DIR/core-receipts.json" >/dev/null
+
+      - name: Generate, replay, conform, and measure the candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot() {
+            find "$GITHUB_WORKSPACE" -path "$GITHUB_WORKSPACE/.git" -prune -o -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}'
+          }
+          before=$(snapshot)
+          plan="$WORK_DIR/product/project-plan.json"
+          denominator=contracts/released-domain-envelope-v2-adoption-denominator-v1.json
+          lock=contracts/released-domain-envelope-v2-adoption-release-lock-v1.json
+          expected_cells=$(jq -r '.total' "$denominator")
+          expected_projection=$(jq -r '.expectations.product_projection' "$denominator")
+          expected_relations=$(jq -r '.expectations.typed_relations' "$denominator")
+          expected_files=$(jq -r '.expectations.envelope_files' "$denominator")
+          expected_checks=$(jq -r '.expectations.conformer_checks' "$denominator")
+          expected_source_replay=$(jq -r '.expectations.source_replay_comparisons' "$denominator")
+          expected_file_replay=$(jq -r '.expectations.file_replay_comparisons' "$denominator")
+          expected_unknown_cases=$(jq -r '.expectations.unknown_cases' "$denominator")
+          expected_unknown_fields=$(jq -r '.expectations.unknown_fields' "$denominator")
+          expected_unknown_direct=$(jq -r '.expectations.unknown_direct_cases' "$denominator")
+          expected_unknown_dependency=$(jq -r '.expectations.unknown_dependency_cases' "$denominator")
+          expected_refuted_reports=$(jq -r '.expectations.refuted_counterexample_reports' "$denominator")
+          expected_normal_paths=$(jq -r '.expectations.normal_paths' "$denominator")
+          expected_refuted_paths=$(jq -r '.expectations.refuted_paths' "$denominator")
+          expected_source_artifacts=$(jq -r '.expectations.source_project_plan_artifacts' "$denominator")
+          start_ns=$(date +%s%N)
+          /usr/bin/time -f '%M' -o "$WORK_DIR/peak-rss-kib" bash scripts/project-released-domain-envelope-v2.sh "$GITHUB_WORKSPACE" "$plan" "$WORK_DIR/core-receipts.json" "$WORK_DIR/meta-graph.json" "$denominator" "$lock" "$WORK_DIR/bundle-a"
+          end_ns=$(date +%s%N)
+          echo $(( (end_ns-start_ns) / 1000000 )) > "$WORK_DIR/wall-ms"
+          bash scripts/project-released-domain-envelope-v2.sh "$GITHUB_WORKSPACE" "$plan" "$WORK_DIR/core-receipts.json" "$WORK_DIR/meta-graph.json" "$denominator" "$lock" "$WORK_DIR/bundle-b"
+
+          compared=0
+          mismatches=0
+          for file in checksums.txt conformance.json evidence.ndjson project.json replay.json relations.ndjson resolutions.ndjson unknowns.ndjson; do
+            compared=$((compared + 1))
+            if ! cmp -s "$WORK_DIR/bundle-a/$file" "$WORK_DIR/bundle-b/$file"; then
+              mismatches=$((mismatches + 1))
+            fi
+          done
+          jq -S -n --argjson compared "$compared" --argjson mismatches "$mismatches" '{schema:"gooo/local-ledger/released-domain-envelope-v2-replay/v1",comparisons_satisfied:($compared-$mismatches),comparisons_total:$compared,mismatches:$mismatches}' > "$WORK_DIR/replay-comparison.json"
+          test "$mismatches" -eq 0
+
+          kit_conformer="$WORK_DIR/kit/consumer-kit-v2/scripts/conform-released-envelope-v2.sh"
+          bash "$kit_conformer" "$WORK_DIR/bundle-a" "$WORK_DIR/bundle-b" "$WORK_DIR/conformance.json"
+          jq -e --argjson expected_files "$expected_files" --argjson expected_checks "$expected_checks" '.decision=="CONFORMANT" and .summary.total==$expected_checks and .summary.closed==$expected_checks and .summary.unknown==0 and .summary.refuted==0 and .summary.files==$expected_files and .summary.external_required_gates==0 and ([.checks[]|select(.state=="CLOSED")]|length)==$expected_checks' "$WORK_DIR/conformance.json" >/dev/null
+
+          envelope_files=$(find "$WORK_DIR/bundle-a" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | wc -l | tr -d ' ')
+          project_relations=$(jq -r '.relation_count' "$WORK_DIR/bundle-a/project.json")
+          project_evidence=$(jq -r '.evidence_count' "$WORK_DIR/bundle-a/project.json")
+          project_resolutions=$(jq -r '.resolution_count' "$WORK_DIR/bundle-a/project.json")
+          project_unknowns=$(jq -r '.unknown_count' "$WORK_DIR/bundle-a/project.json")
+          relation_lines=$(wc -l < "$WORK_DIR/bundle-a/relations.ndjson" | tr -d ' ')
+          evidence_lines=$(wc -l < "$WORK_DIR/bundle-a/evidence.ndjson" | tr -d ' ')
+          resolution_lines=$(wc -l < "$WORK_DIR/bundle-a/resolutions.ndjson" | tr -d ' ')
+          replay_satisfied=$(jq -r '.source.comparisons_satisfied' "$WORK_DIR/bundle-a/replay.json")
+          replay_total=$(jq -r '.source.comparisons_total' "$WORK_DIR/bundle-a/replay.json")
+          replay_file_satisfied=$(jq -r '.comparisons_satisfied' "$WORK_DIR/replay-comparison.json")
+          replay_file_total=$(jq -r '.comparisons_total' "$WORK_DIR/replay-comparison.json")
+          payload_sha=$(jq -r '.projection.payload_sha256' "$WORK_DIR/bundle-a/replay.json")
+          checksum_sha=$(sha256sum "$WORK_DIR/bundle-a/checksums.txt" | awk '{print $1}')
+          kit_identity=$(jq -r '.kit.identity_verified' "$WORK_DIR/immutable-inputs.json")
+          product_identity=$(jq -r '.product_evidence.identity_verified' "$WORK_DIR/immutable-inputs.json")
+          core_identity=$(jq -r '.core.identity_verified' "$WORK_DIR/immutable-inputs.json")
+          specification_repository_checkout=$(jq -r '.specification_repository_checkout' "$WORK_DIR/immutable-inputs.json")
+          conformer_copy=$(jq -r '.conformer_copy' "$WORK_DIR/immutable-inputs.json")
+          conformer_decision=$(jq -r '.decision' "$WORK_DIR/conformance.json")
+          conformer_closed=$(jq -r '.summary.closed' "$WORK_DIR/conformance.json")
+          conformer_total=$(jq -r '.summary.total' "$WORK_DIR/conformance.json")
+          conformer_files=$(jq -r '.summary.files' "$WORK_DIR/conformance.json")
+          conformer_relations=$(jq -r '.summary.relations' "$WORK_DIR/conformance.json")
+          conformer_evidence=$(jq -r '.summary.evidence' "$WORK_DIR/conformance.json")
+          conformer_resolutions=$(jq -r '.summary.resolutions' "$WORK_DIR/conformance.json")
+          conformer_gates=$(jq -r '.summary.external_required_gates' "$WORK_DIR/conformance.json")
+          contract_checks=$(jq '.required_local_checks|length' "$WORK_DIR/bundle-a/conformance.json")
+          contract_unknown_fields=$(jq '.unknown_fields|length' "$WORK_DIR/bundle-a/conformance.json")
+          contract_product_generation=$(jq -r '.product_generation_authorized' "$WORK_DIR/bundle-a/conformance.json")
+          meta_activities=$(jq '[.[]|select(.decision=="CLOSED" and .occurrences==1 and .claim.state=="CLOSED")]|length' "$WORK_DIR/core-receipts.json")
+          meta_total=$(jq -r '.total' "$denominator")
+          meta_graph_activities=$(jq '[.nodes[]|select(.kind=="Activity")]|length' "$WORK_DIR/meta-graph.json")
+          meta_receipts_total=$(jq 'length' "$WORK_DIR/core-receipts.json")
+          product_plan_files=$(find "$WORK_DIR/product" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
+          local_projector_identity=$(jq -r 'if .schema=="gooo/interchange/project/v2" and .project_id=="local://project/semantic-release-plan" and .domain=="local-ledger" and .release.repository=="kimjooyoon/gooo-local-ledger" and .source.schema=="gooo/local-ledger/semantic-project-plan/v1" then true else false end' "$WORK_DIR/bundle-a/project.json")
+          projection_owner_observed=$(jq -r 'if .domain=="local-ledger" and .release.repository=="kimjooyoon/gooo-local-ledger" then true else false end' "$WORK_DIR/bundle-a/project.json")
+          product_projection=0
+          if test "$local_projector_identity" = true && test "$projection_owner_observed" = true && test "$product_identity" = true && test "$meta_activities" -eq "$meta_total" && test "$meta_graph_activities" -eq "$meta_total" && test "$meta_receipts_total" -eq "$meta_total" && test "$project_relations" -eq "$expected_relations" && test "$project_evidence" -eq "$expected_relations" && test "$project_resolutions" -eq "$expected_relations" && test "$conformer_decision" = "CONFORMANT" && test "$conformer_relations" -eq "$expected_relations" && test "$conformer_evidence" -eq "$expected_relations" && test "$conformer_resolutions" -eq "$expected_relations"; then
+            product_projection=1
+          fi
+
+          after=$(snapshot)
+          if test "$before" = "$after"; then repository_writes=0; else repository_writes=1; fi
+          jq -S -n --arg subject_sha "$SUBJECT_SHA" --arg before "$before" --arg after "$after" --argjson repository_writes "$repository_writes" --argjson peak_rss_kib "$(cat "$WORK_DIR/peak-rss-kib")" --argjson wall_ms "$(cat "$WORK_DIR/wall-ms")" --arg go_version "$(go env GOVERSION)" '{schema:"gooo/local-ledger/released-domain-envelope-v2-runtime/v1",subject_sha:$subject_sha,repository_before:$before,repository_after:$after,repository_writes:$repository_writes,local_test_executions:0,cross_project_required_gates:0,peak_rss_kib:$peak_rss_kib,wall_ms:$wall_ms,go_version:$go_version,root_readme_readiness:"EXCLUDED",authority:{repository_mutation_authorized:false,product_generation_authorized:false,product_generation_scope:"CALLER_OWNED_TEMP_OUTPUT_ONLY",automatic_merge_allowed:false}}' > "$WORK_DIR/runtime.json"
+
+          find "$GITHUB_WORKSPACE" -path "$GITHUB_WORKSPACE/.git" -prune -o -path "$GITHUB_WORKSPACE/README.md" -prune -o -type f -print0 | sort -z | while IFS= read -r -d '' file; do
+            case "$file" in
+              *.go) language=Go ;;
+              *.gooo) language=Gooo ;;
+              *) continue ;;
+            esac
+            relative=${file#"$GITHUB_WORKSPACE/"}
+            jq -S -c -n --arg path "$relative" --arg language "$language" --argjson lines "$(wc -l < "$file" | tr -d ' ')" '{path:$path,language:$language,lines:$lines}'
+          done > "$WORK_DIR/source-lines.ndjson"
+          repository_files=$(find "$GITHUB_WORKSPACE" -path "$GITHUB_WORKSPACE/.git" -prune -o -path "$GITHUB_WORKSPACE/README.md" -prune -o -type f -print | wc -l | tr -d ' ')
+          regular_files=$repository_files
+          descendant_directories=$(find "$GITHUB_WORKSPACE" -path "$GITHUB_WORKSPACE/.git" -prune -o -mindepth 1 -type d -print | wc -l | tr -d ' ')
+          jq -S -s --argjson repository_files "$repository_files" --argjson regular_files "$regular_files" --argjson descendant_directories "$descendant_directories" '{repository_files:$repository_files,regular_files:$regular_files,descendant_directories:$descendant_directories,root_readme_readiness:"EXCLUDED",go:{files:([.[]|select(.language=="Go")]|length),lines:([.[]|select(.language=="Go")|.lines]|add//0)},gooo:{files:([.[]|select(.language=="Gooo")]|length),lines:([.[]|select(.language=="Gooo")|.lines]|add//0)},per_file:.}' "$WORK_DIR/source-lines.ndjson" > "$WORK_DIR/inventory.json"
+
+          jq -S -n \
+            --arg payload_sha "$payload_sha" --arg checksum_sha "$checksum_sha" \
+            --argjson kit_identity "$kit_identity" --argjson product_identity "$product_identity" --argjson core_identity "$core_identity" \
+            --argjson specification_repository_checkout "$specification_repository_checkout" --argjson conformer_copy "$conformer_copy" \
+            --argjson envelope_files "$envelope_files" --argjson project_relations "$project_relations" --argjson project_evidence "$project_evidence" --argjson project_resolutions "$project_resolutions" --argjson project_unknowns "$project_unknowns" \
+            --argjson relation_lines "$relation_lines" --argjson evidence_lines "$evidence_lines" --argjson resolution_lines "$resolution_lines" \
+            --argjson replay_satisfied "$replay_satisfied" --argjson replay_total "$replay_total" --argjson replay_file_satisfied "$replay_file_satisfied" --argjson replay_file_total "$replay_file_total" \
+            --argjson conformer_closed "$conformer_closed" --argjson conformer_total "$conformer_total" --argjson conformer_files "$conformer_files" --argjson conformer_relations "$conformer_relations" --argjson conformer_evidence "$conformer_evidence" --argjson conformer_resolutions "$conformer_resolutions" --argjson conformer_gates "$conformer_gates" --arg conformer_decision "$conformer_decision" \
+            --argjson meta_activities "$meta_activities" --argjson meta_total "$meta_total" --argjson meta_graph_activities "$meta_graph_activities" --argjson meta_receipts_total "$meta_receipts_total" \
+            --argjson contract_checks "$contract_checks" --argjson contract_unknown_fields "$contract_unknown_fields" --argjson contract_product_generation "$contract_product_generation" \
+            --argjson product_plan_files "$product_plan_files" --argjson local_projector_identity "$local_projector_identity" --argjson projection_owner_observed "$projection_owner_observed" --argjson product_projection "$product_projection" \
+            --argjson expected_projection "$expected_projection" --argjson expected_source_replay "$expected_source_replay" --argjson expected_file_replay "$expected_file_replay" \
+            '{source_artifacts:{project_relation_count:$project_relations,project_evidence_count:$project_evidence,project_resolution_count:$project_resolutions,project_unknown_count:$project_unknowns,relation_lines:$relation_lines,evidence_lines:$evidence_lines,resolution_lines:$resolution_lines,payload_sha256:$payload_sha,checksums_sha256:$checksum_sha,replay_file_comparisons_satisfied:$replay_file_satisfied,replay_file_comparisons_total:$replay_file_total,source_project_plan_artifacts:$product_plan_files},meta:{activities_observed:$meta_activities,activities_total:$meta_total,graph_activities:$meta_graph_activities,receipts_total:$meta_receipts_total},immutable:{kit_identity_verified:$kit_identity,product_identity_verified:$product_identity,core_identity_verified:$core_identity,specification_repository_checkout:$specification_repository_checkout,conformer_copy:$conformer_copy},contract:{required_files:$conformer_files,required_local_checks:$contract_checks,unknown_fields:$contract_unknown_fields,external_required_gates:$conformer_gates,product_generation_authorized:$contract_product_generation},bundle:{product_owned_projection:$product_projection,product_owned_projection_total:$expected_projection,envelope_files:$envelope_files,envelope_files_total:$conformer_files,relations:$project_relations,relations_total:$conformer_relations,evidence:$project_evidence,evidence_total:$conformer_evidence,resolutions:$project_resolutions,resolutions_total:$conformer_resolutions,deterministic_replay:$replay_satisfied,deterministic_replay_total:$replay_total},conformer:{decision:$conformer_decision,checks:$conformer_closed,checks_total:$conformer_total,files:$conformer_files,total:$conformer_total,relations:$conformer_relations,evidence:$conformer_evidence,resolutions:$conformer_resolutions,gates:$conformer_gates},projection_inputs:{local_projector_identity:$local_projector_identity,projection_owner_observed:$projection_owner_observed,core_activities:$meta_activities,graph_activities:$meta_graph_activities,relation_count:$project_relations,evidence_count:$project_evidence,resolution_count:$project_resolutions,conformer_decision:$conformer_decision,conformer_relations:$conformer_relations,conformer_evidence:$conformer_evidence,conformer_resolutions:$conformer_resolutions},unknown_coordinates:{report_decision:"UNOBSERVED",cells:null,direct_missing:null,dependency_blocked:null,six_fields:null,all_six_fields:false},adversarial:{reports_observed:null,malformed:{decision:"UNOBSERVED",refuted_cells:null,reason:"COUNTEREXAMPLE_RUN_PENDING"},fixed_point:{decision:"UNOBSERVED",refuted_cells:null,reason:"COUNTEREXAMPLE_RUN_PENDING"}},user_paths:{normal:null,unknown:null,refuted:null}}' > "$WORK_DIR/base-facts.json"
+
+          jq '.[0].decision="UNKNOWN"' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/malformed-unknown-core-receipts.json"
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/malformed-unknown-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/malformed-unknown-report.json" "$SUBJECT_SHA"
+          malformed_decision=$(jq -r '.decision' "$WORK_DIR/malformed-unknown-report.json")
+          malformed_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/malformed-unknown-report.json")
+          malformed_reason=$(jq -r '.claim.reason' "$WORK_DIR/malformed-unknown-report.json")
+          malformed_report_sha=$(sha256sum "$WORK_DIR/malformed-unknown-report.json" | awk '{print $1}')
+          jq -e '.decision=="FAIL_CLOSED" and .summary.cells_unknown==0 and .summary.cells_refuted>0 and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/malformed-unknown-report.json" >/dev/null
+
+          jq '.[0].decision="FIXED_POINT"' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/fixed-point-core-receipts.json"
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/fixed-point-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/fixed-point-report.json" "$SUBJECT_SHA"
+          fixed_point_decision=$(jq -r '.decision' "$WORK_DIR/fixed-point-report.json")
+          fixed_point_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/fixed-point-report.json")
+          fixed_point_reason=$(jq -r '.claim.reason' "$WORK_DIR/fixed-point-report.json")
+          fixed_point_report_sha=$(sha256sum "$WORK_DIR/fixed-point-report.json" | awk '{print $1}')
+          jq -e --argjson expected_cells "$expected_cells" '.decision=="FAIL_CLOSED" and .summary.cells_closed==0 and .summary.cells_unknown==0 and .summary.cells_refuted==$expected_cells and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/fixed-point-report.json" >/dev/null
+
+          refuted_paths=$(jq -n --arg malformed "$malformed_decision" --arg fixed_point "$fixed_point_decision" 'if $malformed=="FAIL_CLOSED" and $fixed_point=="FAIL_CLOSED" then 1 else 0 end')
+          test "$refuted_paths" -eq "$expected_refuted_paths"
+          adversarial_reports_observed=$(jq -n --arg malformed "$malformed_decision" --arg fixed_point "$fixed_point_decision" '[ $malformed, $fixed_point ] | map(select(.=="FAIL_CLOSED")) | length')
+          jq -e -n --argjson expected_reports "$expected_refuted_reports" --argjson reports "$adversarial_reports_observed" '$reports==$expected_reports' >/dev/null
+          jq --arg unknown_decision "UNOBSERVED" --argjson unknown_cells null --argjson unknown_direct null --argjson unknown_dependency null --argjson unknown_field_count null --argjson unknown_all_six false --arg malformed_decision "$malformed_decision" --argjson malformed_refuted_cells "$malformed_refuted_cells" --arg malformed_reason "$malformed_reason" --arg malformed_report_sha "$malformed_report_sha" --arg fixed_point_decision "$fixed_point_decision" --argjson fixed_point_refuted_cells "$fixed_point_refuted_cells" --arg fixed_point_reason "$fixed_point_reason" --arg fixed_point_report_sha "$fixed_point_report_sha" --argjson adversarial_reports_observed "$adversarial_reports_observed" --argjson refuted_paths "$refuted_paths" '.unknown_coordinates={report_decision:$unknown_decision,cells:$unknown_cells,direct_missing:$unknown_direct,dependency_blocked:$unknown_dependency,six_fields:$unknown_field_count,all_six_fields:$unknown_all_six}|.adversarial={reports_observed:$adversarial_reports_observed,malformed:{decision:$malformed_decision,refuted_cells:$malformed_refuted_cells,reason:$malformed_reason,report_sha256:$malformed_report_sha},fixed_point:{decision:$fixed_point_decision,refuted_cells:$fixed_point_refuted_cells,reason:$fixed_point_reason,report_sha256:$fixed_point_report_sha}}|.user_paths={normal:null,unknown:null,refuted:$refuted_paths}' "$WORK_DIR/base-facts.json" > "$WORK_DIR/adversarial-facts.json"
+
+          missing_activity=$(jq -r '.cells[]|select(.id=="READ_ONLY_CONFORMANCE")|.activity' "$denominator")
+          jq --arg missing_activity "$missing_activity" 'map(select(.selector.name!=$missing_activity))' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/missing-receipt-core-receipts.json"
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/missing-receipt-core-receipts.json" "$WORK_DIR/adversarial-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/unknown-report.json" "$SUBJECT_SHA"
+          unknown_decision=$(jq -r '.decision' "$WORK_DIR/unknown-report.json")
+          unknown_cells=$(jq '[.cells[]|select(.state=="UNKNOWN")]|length' "$WORK_DIR/unknown-report.json")
+          unknown_direct=$(jq '[.cells[]|select(.state=="UNKNOWN" and .unknown_class=="DIRECT_MISSING")]|length' "$WORK_DIR/unknown-report.json")
+          unknown_dependency=$(jq '[.cells[]|select(.state=="UNKNOWN" and .unknown_class=="DEPENDENCY_BLOCKED")]|length' "$WORK_DIR/unknown-report.json")
+          unknown_field_count=$(jq '([.cells[]|select(.state=="UNKNOWN")][0]//{}) as $sample | ["stage","step","reason","unknown_class","next_operation","blocked_by"] | map(. as $key | select($sample|has($key))) | length' "$WORK_DIR/unknown-report.json")
+          unknown_all_six=$(jq -r --argjson fields "$expected_unknown_fields" '(([.cells[]|select(.state=="UNKNOWN")][0]//{}) as $sample | (["stage","step","reason","unknown_class","next_operation","blocked_by"] | map(. as $key | select($sample|has($key))) | length)==$fields)' "$WORK_DIR/unknown-report.json")
+          jq -e --arg expected_decision "RELEASED_DOMAIN_ENVELOPE_V2_UNKNOWN" --argjson expected_cases "$expected_unknown_cases" --argjson expected_fields "$expected_unknown_fields" --argjson expected_direct "$expected_unknown_direct" --argjson expected_dependency "$expected_unknown_dependency" --argjson cells "$unknown_cells" --argjson direct "$unknown_direct" --argjson dependency "$unknown_dependency" --argjson fields "$unknown_field_count" --argjson all_six "$unknown_all_six" '.decision==$expected_decision and $cells==$expected_cases and $direct==$expected_direct and $dependency==$expected_dependency and $fields==$expected_fields and $all_six==true and .summary.cells_unknown==$cells and .summary.cells_refuted==0 and all(.cells[]; (.state!="UNKNOWN") or (.occurrences==0 and (.stage|type)=="string" and (.step|type)=="string" and (.reason|type)=="string" and (.unknown_class|IN("DIRECT_MISSING","DEPENDENCY_BLOCKED")) and (.next_operation|type)=="string" and (.blocked_by|type)=="array" and ((.unknown_class=="DIRECT_MISSING" and .reason=="ACTIVITY_NOT_FOUND" and (.blocked_by|length)==0) or (.unknown_class=="DEPENDENCY_BLOCKED" and .reason=="DEPENDENCY_BLOCKED" and (.blocked_by|length)>0))))' "$WORK_DIR/unknown-report.json" >/dev/null
+
+          unknown_report_sha=$(sha256sum "$WORK_DIR/unknown-report.json" | awk '{print $1}')
+          jq --arg unknown_decision "$unknown_decision" --argjson unknown_cells "$unknown_cells" --argjson unknown_direct "$unknown_direct" --argjson unknown_dependency "$unknown_dependency" --argjson unknown_field_count "$unknown_field_count" --argjson unknown_all_six "$unknown_all_six" --arg unknown_report_sha "$unknown_report_sha" '.unknown_coordinates={report_decision:$unknown_decision,cells:$unknown_cells,direct_missing:$unknown_direct,dependency_blocked:$unknown_dependency,six_fields:$unknown_field_count,all_six_fields:$unknown_all_six,report_sha256:$unknown_report_sha}|.source_artifacts.unknown_report_sha256=$unknown_report_sha|.user_paths.unknown=$unknown_cells' "$WORK_DIR/adversarial-facts.json" > "$WORK_DIR/facts.json"
+
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/core-receipts.json" "$WORK_DIR/facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/normal-preliminary-report.json" "$SUBJECT_SHA"
+          normal_paths=$(jq -r 'if .decision=="RELEASED_DOMAIN_ENVELOPE_V2_CANDIDATE_CLOSED" and .summary.cells_closed==.summary.cells_total then 1 else 0 end' "$WORK_DIR/normal-preliminary-report.json")
+          test "$normal_paths" -eq "$expected_normal_paths"
+          normal_report_sha=$(sha256sum "$WORK_DIR/normal-preliminary-report.json" | awk '{print $1}')
+          jq --argjson normal_paths "$normal_paths" --arg normal_report_sha "$normal_report_sha" '.user_paths.normal=$normal_paths|.source_artifacts.normal_report_sha256=$normal_report_sha' "$WORK_DIR/facts.json" > "$WORK_DIR/final-facts.json"
+
+          if ! bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/core-receipts.json" "$WORK_DIR/final-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/adoption-report.json" "$SUBJECT_SHA" > "$WORK_DIR/evaluator-stdout.log" 2> "$WORK_DIR/evaluator-stderr.log"; then
+            echo "released-domain envelope evaluator failed" >&2
+            cat "$WORK_DIR/evaluator-stderr.log" >&2
+            exit 1
+          fi
+          jq -e --argjson expected_cells "$expected_cells" --argjson expected_projection "$expected_projection" --argjson expected_files "$expected_files" --argjson expected_relations "$expected_relations" --argjson expected_checks "$expected_checks" --argjson expected_source_replay "$expected_source_replay" --argjson expected_file_replay "$expected_file_replay" --argjson expected_unknown_cases "$expected_unknown_cases" --argjson expected_unknown_direct "$expected_unknown_direct" --argjson expected_unknown_dependency "$expected_unknown_dependency" --argjson expected_refuted_reports "$expected_refuted_reports" --argjson expected_normal_paths "$expected_normal_paths" --argjson expected_refuted_paths "$expected_refuted_paths" --argjson expected_unknown_fields "$expected_unknown_fields" --argjson expected_source_artifacts "$expected_source_artifacts" '
+            .decision=="RELEASED_DOMAIN_ENVELOPE_V2_CANDIDATE_CLOSED" and
+            .summary.cells_total==$expected_cells and .summary.cells_closed==$expected_cells and .summary.cells_unknown==0 and .summary.cells_refuted==0 and
+            .summary.normal_cases==$expected_normal_paths and .summary.unknown_cases==0 and .summary.refuted_cases==0 and
+            .summary.meta_activities_observed==$expected_cells and .summary.meta_activities_total==$expected_cells and
+            .summary.generated_artifacts_observed==$expected_files and .summary.generated_artifacts_total==$expected_files and
+            .summary.product_owned_projection==$expected_projection and .summary.product_owned_projection_total==$expected_projection and
+            .summary.envelope_files==$expected_files and .summary.envelope_files_total==$expected_files and
+            .summary.relations==$expected_relations and .summary.relations_total==$expected_relations and .summary.evidence==$expected_relations and .summary.evidence_total==$expected_relations and .summary.resolutions==$expected_relations and .summary.resolutions_total==$expected_relations and
+            .summary.conformer_checks==$expected_checks and .summary.conformer_checks_total==$expected_checks and .summary.deterministic_replay==$expected_source_replay and .summary.deterministic_replay_total==$expected_source_replay and .summary.file_replay_comparisons_observed==$expected_file_replay and .summary.file_replay_comparisons_total==$expected_file_replay and
+            .summary.source_project_plan_artifacts_observed==$expected_source_artifacts and .summary.source_project_plan_artifacts_total==$expected_source_artifacts and
+            .cases=={normal:$expected_normal_paths,unknown:$expected_unknown_cases,refuted:$expected_refuted_paths} and .unknown_classes=={direct_missing:$expected_unknown_direct,dependency_blocked:$expected_unknown_dependency,total:$expected_unknown_cases,fields:["stage","step","reason","unknown_class","next_operation","blocked_by"]} and
+            .adversarial.reports_observed==$expected_refuted_reports and .adversarial.malformed.decision=="FAIL_CLOSED" and .adversarial.fixed_point.decision=="FAIL_CLOSED" and .adversarial.malformed.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION" and .adversarial.fixed_point.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION" and
+            .adoption.released_domain_adoption=={observed:0,total:1,state:"UNKNOWN"} and .adoption.external_utility.observed==0 and .adoption.external_utility.total==1 and .adoption.external_utility.state=="UNKNOWN" and
+            .authority.repository_writes==0 and .authority.local_test_executions==0 and .authority.cross_project_required_gates==0 and
+            ([.proof_counts[]|select(.observed==4 and .total==4)]|length)==3 and ([.indicator_counts[]|select(.observed==4 and .total==4)]|length)==3
+          ' "$WORK_DIR/adoption-report.json" >/dev/null
+
+          {
+            echo "## Released-domain envelope v2 adoption candidate"
+            jq -r '"- product-owned projection: \(.summary.product_owned_projection)/\(.summary.product_owned_projection_total)","- envelope files: \(.summary.envelope_files)/\(.summary.envelope_files_total)","- relations/evidence/resolutions: \(.summary.relations)/\(.summary.relations_total)/\(.summary.evidence)/\(.summary.evidence_total)/\(.summary.resolutions)/\(.summary.resolutions_total)","- conformer checks: \(.summary.conformer_checks)/\(.summary.conformer_checks_total)","- source replay: \(.summary.deterministic_replay)/\(.summary.deterministic_replay_total)","- file replay comparisons: \(.summary.file_replay_comparisons_observed)/\(.summary.file_replay_comparisons_total)","- released adoption: \(.adoption.released_domain_adoption.observed)/\(.adoption.released_domain_adoption.total) \(.adoption.released_domain_adoption.state)","- external utility: \(.adoption.external_utility.observed)/\(.adoption.external_utility.total) \(.adoption.external_utility.state)","- normal/UNKNOWN/REFUTED cases: \(.cases.normal)/\(.cases.unknown)/\(.cases.refuted)","- Gooo meta activities: \(.summary.meta_activities_observed)/\(.summary.meta_activities_total)","- generated artifacts: \(.summary.generated_artifacts_observed)/\(.summary.generated_artifacts_total)","- user paths: \(.summary.user_paths_observed)/\(.summary.user_paths_total)","- repository writes/local tests/cross-project gates: \(.summary.repository_writes)/\(.summary.local_test_executions)/\(.summary.cross_project_required_gates)","- Go files/lines: \(.metrics.go_files)/\(.metrics.go_lines)","- Gooo files/lines: \(.metrics.gooo_files)/\(.metrics.gooo_lines)","- regular files/directories: \(.metrics.regular_files)/\(.metrics.descendant_directories)","- peak RSS/wall: \(.metrics.peak_rss_kib) KiB/\(.metrics.wall_ms) ms"' "$WORK_DIR/adoption-report.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload adoption evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: local-ledger-released-domain-envelope-v2-${{ github.event.pull_request.head.sha || github.sha }}
+          if-no-files-found: warn
+          path: |
+            ${{ env.WORK_DIR }}/bundle-a
+            ${{ env.WORK_DIR }}/bundle-b
+            ${{ env.WORK_DIR }}/adoption-report.json
+            ${{ env.WORK_DIR }}/normal-preliminary-report.json
+            ${{ env.WORK_DIR }}/unknown-report.json
+            ${{ env.WORK_DIR }}/malformed-unknown-report.json
+            ${{ env.WORK_DIR }}/fixed-point-report.json
+            ${{ env.WORK_DIR }}/conformance.json
+            ${{ env.WORK_DIR }}/core-receipts.json
+            ${{ env.WORK_DIR }}/missing-receipt-core-receipts.json
+            ${{ env.WORK_DIR }}/malformed-unknown-core-receipts.json
+            ${{ env.WORK_DIR }}/fixed-point-core-receipts.json
+            ${{ env.WORK_DIR }}/meta-graph.json
+            ${{ env.WORK_DIR }}/immutable-inputs.json
+            ${{ env.WORK_DIR }}/base-facts.json
+            ${{ env.WORK_DIR }}/adversarial-facts.json
+            ${{ env.WORK_DIR }}/facts.json
+            ${{ env.WORK_DIR }}/final-facts.json
+            ${{ env.WORK_DIR }}/runtime.json
+            ${{ env.WORK_DIR }}/inventory.json
+            ${{ env.WORK_DIR }}/replay-comparison.json
+            ${{ env.WORK_DIR }}/evaluator-stdout.log
+            ${{ env.WORK_DIR }}/evaluator-stderr.log
