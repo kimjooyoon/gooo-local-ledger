@@ -10,7 +10,7 @@ entity WorkState id "local://project/semantic-release-plan/state/work"
 entity BlockerState id "local://project/semantic-release-plan/state/blocker"
 entity MilestoneState id "local://project/semantic-release-plan/state/milestone"
 
-activity EstablishProject(ProjectIntent, ClaimDependencyPrimitive) -> ProjectState computes "claim.edge:root|establish-project-from-intent-and-released-primitive"
+activity EstablishProject(ProjectIntent, ClaimDependencyPrimitive) -> ProjectState computes "claim.observe:recoverable|establish-project-from-intent-and-released-primitive"
 activity DefineOutcome(ProjectState) -> OutcomeState computes "claim.edge:requires|outcome-requires-established-project"
 activity GatherEvidence(ProjectState, OutcomeState) -> EvidenceState computes "claim.edge:supports|evidence-supports-project-outcome"
 activity SelectWork(OutcomeState, EvidenceState) -> WorkState computes "claim.edge:requires|work-requires-outcome-and-evidence"

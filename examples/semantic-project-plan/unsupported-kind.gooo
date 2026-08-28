@@ -5,5 +5,5 @@ entity ProjectSeed id "local://semantic-project-plan/unsupported/seed"
 entity ProjectState id "local://semantic-project-plan/unsupported/state"
 entity PlannedWork id "local://semantic-project-plan/unsupported/work"
 
-activity EstablishUnsupportedProject(ProjectSeed) -> ProjectState computes "claim.edge:root|establish-unsupported-project"
+activity EstablishUnsupportedProject(ProjectSeed) -> ProjectState computes "claim.observe:recoverable|establish-unsupported-project"
 activity InferUnsupportedWork(ProjectState) -> PlannedWork computes "claim.edge:implies|unsupported-project-implication"

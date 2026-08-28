@@ -6,6 +6,6 @@ entity SecondSeed id "local://semantic-project-plan/ambiguous/second-seed"
 entity SharedProjectState id "local://semantic-project-plan/ambiguous/shared-state"
 entity PlannedWork id "local://semantic-project-plan/ambiguous/work"
 
-activity EstablishFirstProject(FirstSeed) -> SharedProjectState computes "claim.edge:root|first-project-producer"
-activity EstablishSecondProject(SecondSeed) -> SharedProjectState computes "claim.edge:root|second-project-producer"
+activity EstablishFirstProject(FirstSeed) -> SharedProjectState computes "claim.observe:recoverable|first-project-producer"
+activity EstablishSecondProject(SecondSeed) -> SharedProjectState computes "claim.observe:recoverable|second-project-producer"
 activity PlanAmbiguousWork(SharedProjectState) -> PlannedWork computes "claim.edge:requires|work-requires-unambiguous-project"
