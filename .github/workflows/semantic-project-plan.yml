@@ -81,7 +81,7 @@ jobs:
           observation=examples/semantic-project-plan/observation.gooo
           "$gooo" check "$project"
           "$gooo" check "$observation"
-          "$gooo" graph dump "$observation" --json > "$WORK_DIR/observation-graph.json"
+          "$gooo" graph dump "$observation" > "$WORK_DIR/observation-graph.json"
 
           start_ns=$(date +%s%N)
           /usr/bin/time -f '%M' -o "$WORK_DIR/max-rss-kib" \
