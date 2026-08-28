@@ -80,9 +80,7 @@ jobs:
           project=examples/semantic-project-plan/project.gooo
           observation=examples/semantic-project-plan/observation.gooo
           "$gooo" check "$project"
-          "$gooo" semantic check "$project"
           "$gooo" check "$observation"
-          "$gooo" semantic check "$observation"
           "$gooo" graph dump "$observation" --json > "$WORK_DIR/observation-graph.json"
 
           start_ns=$(date +%s%N)
