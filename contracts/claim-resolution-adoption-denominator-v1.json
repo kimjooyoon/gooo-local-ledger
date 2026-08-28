@@ -1,0 +1,30 @@
+{
+  "schema": "gooo/local-ledger/claim-resolution-adoption-denominator/v1",
+  "denominator_id": "gooo.denominator.local-ledger.claim-resolution-adoption.v1",
+  "candidate_id": "gooo.primitive.claim-resolution-tuple.v1",
+  "total": 12,
+  "proofs": [
+    {"choice":"FOUNDATION","total":4},
+    {"choice":"COHERENCE","total":4},
+    {"choice":"REGRESSION","total":4}
+  ],
+  "indicator_classes": [
+    {"class":"DRIVER","total":4},
+    {"class":"OUTCOME","total":4},
+    {"class":"GUARDRAIL","total":4}
+  ],
+  "cells": [
+    {"id":"CORE_PRIMITIVE_RELEASE_OBSERVED","activity":"ObserveClaimResolutionRelease","proof_choice":"FOUNDATION","indicator_class":"DRIVER","closed_reason":"CORE_CLAIM_RESOLUTION_RELEASE_OBSERVED"},
+    {"id":"READINESS_RELEASE_OBSERVED","activity":"ObserveReleasedReadinessClaims","proof_choice":"FOUNDATION","indicator_class":"DRIVER","closed_reason":"RELEASED_READINESS_CLAIMS_OBSERVED"},
+    {"id":"READY_CLAIM_RESOLVED","activity":"ResolveReleaseReadyClaim","proof_choice":"FOUNDATION","indicator_class":"OUTCOME","closed_reason":"RELEASE_READY_CLAIM_RESOLVED_BY_CORE"},
+    {"id":"MISSING_RUNBOOK_UNKNOWN_RESOLVED","activity":"ResolveMissingRunbookClaim","proof_choice":"FOUNDATION","indicator_class":"OUTCOME","closed_reason":"MISSING_RUNBOOK_UNKNOWN_RESOLVED_BY_CORE"},
+    {"id":"SOURCE_MISMATCH_REFUTED","activity":"ResolveSourceMismatchClaim","proof_choice":"COHERENCE","indicator_class":"OUTCOME","closed_reason":"SOURCE_MISMATCH_REFUTED_BY_CORE"},
+    {"id":"RELEASED_CLAIMS_COMPARED","activity":"CompareReleasedReadinessClaims","proof_choice":"COHERENCE","indicator_class":"DRIVER","closed_reason":"RELEASED_AND_CORE_CLAIMS_3_OF_3_EQUAL"},
+    {"id":"UNKNOWN_CLASS_BOUND","activity":"BindUnknownClass","proof_choice":"COHERENCE","indicator_class":"GUARDRAIL","closed_reason":"DIRECT_MISSING_UNKNOWN_CLASS_EXPLICITLY_BOUND"},
+    {"id":"INVENTORY_CONTEXT_BOUND","activity":"BindReleasedInventoryContext","proof_choice":"COHERENCE","indicator_class":"OUTCOME","closed_reason":"RELEASED_INVENTORY_CONTEXT_4_OF_4_BOUND"},
+    {"id":"INCOMPLETE_UNKNOWN_REJECTED","activity":"RejectIncompleteUnknown","proof_choice":"REGRESSION","indicator_class":"GUARDRAIL","closed_reason":"INCOMPLETE_UNKNOWN_FAILS_CLOSED"},
+    {"id":"UNRECOGNIZED_STATE_REJECTED","activity":"RejectUnrecognizedState","proof_choice":"REGRESSION","indicator_class":"GUARDRAIL","closed_reason":"UNRECOGNIZED_STATE_FAILS_CLOSED"},
+    {"id":"CLAIM_REPLAY_OBSERVED","activity":"ObserveClaimReplay","proof_choice":"REGRESSION","indicator_class":"GUARDRAIL","closed_reason":"CORE_CLAIM_RECEIPTS_REPLAY_5_OF_5_EQUAL"},
+    {"id":"INDEPENDENT_ADOPTION_RECORDED","activity":"RecordIndependentAdoption","proof_choice":"REGRESSION","indicator_class":"DRIVER","closed_reason":"INDEPENDENT_CORE_PRIMITIVE_ADOPTION_RECORDED"}
+  ]
+}
