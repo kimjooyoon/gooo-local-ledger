@@ -85,7 +85,11 @@ jq -e --slurpfile contract "$contract" '
   (.edges|length)==$contract[0].normal.dependencies and
   (.gaps|length)==0 and
   (.indicators|length)==8 and
-  all(.indicators[]; .satisfied==true) and
+  all(.indicators[];
+    if .comparator=="EQ" then .value==.target
+    elif .comparator=="GTE" then .value>=.target
+    elif .comparator=="LTE" then .value<=.target
+    else false end) and
   .authority.semantic_truth_claimed==false and
   .authority.state_propagation_authorized==false and
   .authority.core_mutation_authorized==false and
