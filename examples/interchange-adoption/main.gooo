@@ -1,0 +1,29 @@
+package interchangeadoption
+namespace localledgerinterchange
+
+entity ReleasedGoooIdentity id "local://interchange/entity/released-gooo-identity"
+entity InterchangeReleaseIdentity id "local://interchange/entity/interchange-release-identity"
+entity LocalLedgerAuthority id "local://interchange/entity/local-ledger-authority"
+entity AdoptionState id "local://interchange/entity/adoption-state"
+entity FiveFileEnvelope id "local://interchange/entity/five-file-envelope"
+entity AdvisoryBundle id "local://interchange/entity/advisory-bundle"
+entity LocalConformance id "local://interchange/entity/local-conformance"
+entity RelationMatch id "local://interchange/entity/relation-match"
+entity ReplayObservation id "local://interchange/entity/replay-observation"
+entity UnknownTupleGuard id "local://interchange/entity/unknown-tuple-guard"
+entity ChecksumDriftGuard id "local://interchange/entity/checksum-drift-guard"
+entity IndependentReadOnlyEffect id "local://interchange/entity/independent-read-only-effect"
+entity AdoptionDecision id "local://interchange/entity/adoption-decision"
+
+activity ObserveReleasedGoooIdentity(ReleasedGoooIdentity) -> AdoptionDecision
+activity ObserveInterchangeReleaseIdentity(InterchangeReleaseIdentity) -> AdoptionDecision
+activity DeclareLocalLedgerAuthority(LocalLedgerAuthority) -> AdoptionDecision
+activity ObserveAdoptionState(AdoptionState) -> AdoptionDecision
+activity DefineFiveFileEnvelope(FiveFileEnvelope) -> AdoptionDecision
+activity GenerateAdvisoryBundle(AdvisoryBundle) -> AdoptionDecision
+activity ConformSixLocalChecks(LocalConformance) -> AdoptionDecision
+activity ObserveRelationMatch(RelationMatch) -> AdoptionDecision
+activity ObserveDeterministicReplay(ReplayObservation) -> AdoptionDecision
+activity PreserveUnknownTuple(UnknownTupleGuard) -> AdoptionDecision
+activity RejectChecksumDrift(ChecksumDriftGuard) -> AdoptionDecision
+activity PreserveIndependentReadOnlyEffect(IndependentReadOnlyEffect) -> AdoptionDecision
