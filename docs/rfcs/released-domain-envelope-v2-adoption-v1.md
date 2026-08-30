@@ -1,11 +1,16 @@
 # Released-domain envelope v2 adoption candidate
 
-This candidate is Local Ledger's product-owned projection of the eight typed
-dependency relations in the released `project-plan.json` into the immutable
-released-domain envelope v2 format. Local Ledger owns the projection and its
-released evidence; the Interchange specification owns the envelope format and
-the read-only consumer conformer. This is an adoption candidate, not a new
-release, merge authorization, or semantic-truth claim.
+This candidate is Local Ledger's product-owned implementation of projecting the
+eight typed dependency relations in the released `project-plan.json` into the
+immutable released-domain envelope v2 format. The released envelope's
+`project.json.authority.projection_owner` is `INTERCHANGE_SPECIFICATION` as
+required by the immutable consumer kit; the local adoption report separately
+records `envelope_semantic_authority: INTERCHANGE_SPECIFICATION` and
+`projection_implementation_owner: LOCAL_LEDGER`. Local Ledger owns the
+implementation and its released evidence, while the Interchange specification
+owns the envelope authority and read-only consumer conformer.
+This is an adoption candidate, not a new release, merge authorization, or
+semantic-truth claim.
 
 ## Local-only denominator
 
@@ -33,7 +38,8 @@ OUTCOME, and GUARDRAIL each contain four cells. A normal candidate closes
 12/12. Each cell's evaluator fact has the same name and meaning as the cell;
 unrelated Design or Infra releases are not used to close a Local cell.
 
-The normal run observes 1/1 product-owned projection, 8/8 envelope files,
+The normal run observes 1/1 product-owned projection implementation, with the
+exact authority split above, plus 8/8 envelope files,
 8/8 typed relations, 8/8 evidence anchors, 8/8 resolutions, and 10/10
 read-only conformer checks. Deterministic replay reports source receipt
 comparison 1/1 separately from physical file comparison 8/8. The eight-file
@@ -79,10 +85,12 @@ provided. The report declares one external-utility opportunity and zero
 external-utility evidence.
 
 The report records normal, UNKNOWN, and REFUTED case counts; Gooo activity
-count; generated artifact count; user-path count; allowed and forbidden
+count; generated artifact count; the exact specification projection owner and
+product implementation owner; user-path count; allowed and forbidden
 authority; Go/Gooo files and physical lines; descendant directories; regular
 files with the root README excluded from inventory; peak RSS KiB; wall ms; and
 the zero values for repository writes, local test executions, and
-cross-project required gates. Product generation is limited to caller-owned
-temporary output. The Interchange CI is consumed as a released kit and is not
-a required cross-project gate.
+cross-project required gates. Swapping either authority value is REFUTED and
+cannot close the product-owned projection cell. Product generation is limited
+to caller-owned temporary output. The Interchange CI is consumed as a released
+kit and is not a required cross-project gate.

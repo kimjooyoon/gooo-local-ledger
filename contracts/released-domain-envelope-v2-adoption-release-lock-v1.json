@@ -27,7 +27,8 @@
   },
   "authority": {
     "released_inputs_only": true,
-    "projection_owner": "LOCAL_LEDGER",
+    "envelope_semantic_authority": "INTERCHANGE_SPECIFICATION",
+    "projection_implementation_owner": "LOCAL_LEDGER",
     "envelope_format_owner": "INTERCHANGE_SPECIFICATION",
     "product_generation_authorized": false,
     "generation_output_scope": "CALLER_OWNED_TEMP_OUTPUT_ONLY",
