@@ -107,7 +107,7 @@ jq -S -n \
     evidence_count:8,
     resolution_count:8,
     unknown_count:0,
-    authority:{projection_owner:"INTERCHANGE_SPECIFICATION",domain_release_adoption_claimed:false,source_repository_writes:0,product_generation_authorized:false}
+    authority:{projection_owner:"LOCAL_LEDGER",domain_release_adoption_claimed:false,source_repository_writes:0,product_generation_authorized:false}
   }' > "$tmp/envelope/project.json"
 
 : > "$tmp/envelope/evidence.ndjson"
