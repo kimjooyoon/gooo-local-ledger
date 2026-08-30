@@ -311,6 +311,7 @@ jobs:
             cat "$WORK_DIR/evaluator-stderr.log" >&2
             exit 1
           fi
+          jq '{decision,summary,cases,unknown_classes,adversarial,adoption,authority}' "$WORK_DIR/adoption-report.json"
           jq -e --argjson expected_cells "$expected_cells" --argjson expected_projection "$expected_projection" --argjson expected_files "$expected_files" --argjson expected_relations "$expected_relations" --argjson expected_checks "$expected_checks" --argjson expected_source_replay "$expected_source_replay" --argjson expected_file_replay "$expected_file_replay" --argjson expected_unknown_cases "$expected_unknown_cases" --argjson expected_unknown_direct "$expected_unknown_direct" --argjson expected_unknown_dependency "$expected_unknown_dependency" --argjson expected_refuted_reports "$expected_refuted_reports" --argjson expected_normal_paths "$expected_normal_paths" --argjson expected_refuted_paths "$expected_refuted_paths" --argjson expected_unknown_fields "$expected_unknown_fields" --argjson expected_source_artifacts "$expected_source_artifacts" '
             .decision=="RELEASED_DOMAIN_ENVELOPE_V2_CANDIDATE_CLOSED" and
             .summary.cells_total==$expected_cells and .summary.cells_closed==$expected_cells and .summary.cells_unknown==0 and .summary.cells_refuted==0 and
