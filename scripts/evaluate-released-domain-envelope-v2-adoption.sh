@@ -86,10 +86,10 @@ jq -S -n \
        ($cell|strip_cell)+{state:"REFUTED",occurrences:0,stage:"CORE_META_ACTIVITY",step:"RESOLVE_ACTIVITY_CARDINALITY",reason:(if $fixed_point_seen then "UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION" else "ADOPTION_DENOMINATOR_INVALID" end),unknown_class:null,next_operation:"RESTORE_CORE_META_ACTIVITY",blocked_by:[]}
      elif $core_state.state=="REFUTED" then
        ($cell|strip_cell)+{state:"REFUTED",occurrences:$core_state.occurrences,stage:$core_state.stage,step:$core_state.step,reason:$core_state.reason,unknown_class:null,next_operation:$core_state.next_operation,blocked_by:[]}
-     elif $core_state.state=="UNKNOWN" then
-       ($cell|strip_cell)+{state:"UNKNOWN",occurrences:$core_state.occurrences,stage:$core_state.stage,step:$core_state.step,reason:$core_state.reason,unknown_class:$core_state.unknown_class,next_operation:$core_state.next_operation,blocked_by:$core_state.blocked_by}
      elif ($refuted_predecessors|length)>0 then
        ($cell|strip_cell)+{state:"REFUTED",occurrences:0,stage:"DEPENDENCY_RESOLUTION",step:"BLOCKED_BY_REFUTED_PREDECESSOR",reason:"DEPENDENCY_REFUTED",unknown_class:null,next_operation:"RESTORE_REFUTED_PREDECESSOR",blocked_by:[$refuted_predecessors[].id]}
+     elif $core_state.state=="UNKNOWN" then
+       ($cell|strip_cell)+{state:"UNKNOWN",occurrences:$core_state.occurrences,stage:$core_state.stage,step:$core_state.step,reason:$core_state.reason,unknown_class:$core_state.unknown_class,next_operation:$core_state.next_operation,blocked_by:$core_state.blocked_by}
      elif ($unknown_predecessors|length)>0 then
        ($cell|strip_cell)+{state:"UNKNOWN",occurrences:0,stage:"DEPENDENCY_RESOLUTION",step:"WAIT_FOR_PREDECESSOR",reason:"DEPENDENCY_BLOCKED",unknown_class:"DEPENDENCY_BLOCKED",next_operation:"RESOLVE_BLOCKED_PREDECESSOR",blocked_by:[$unknown_predecessors[].id]}
      elif fact($cell.id) then
@@ -102,7 +102,8 @@ jq -S -n \
   ([$cells[]|select(.state=="CLOSED")]|length) as $closed |
   ([$cells[]|select(.state=="UNKNOWN")]|length) as $unknown |
   ([$cells[]|select(.state=="REFUTED")]|length) as $refuted |
-  ([$cells[]|select(.state!="CLOSED")][0]//null) as $first |
+  (([$cells[]|select(.state=="REFUTED")]|sort_by(.id)|.[0]) //
+   ([$cells[]|select(.state=="UNKNOWN")]|sort_by(.id)|.[0]) // null) as $first |
   {
     schema:"gooo/local-ledger/released-domain-envelope-v2-adoption-evaluation/v1",
     subject_sha:$subject_sha,
