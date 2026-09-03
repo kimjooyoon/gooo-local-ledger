@@ -266,13 +266,35 @@ jobs:
           bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/core-receipts.json" "$WORK_DIR/swapped-authority-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/swapped-authority-report.json" "$SUBJECT_SHA"
           jq -e '.decision=="FAIL_CLOSED" and ([.cells[]|select(.id=="PRODUCT_PROJECTION" and .state=="REFUTED")]|length)==1 and .authority.envelope_semantic_authority=="LOCAL_LEDGER" and .authority.projection_implementation_owner=="INTERCHANGE_SPECIFICATION"' "$WORK_DIR/swapped-authority-report.json" >/dev/null
 
+          own_unknown_activity=$(jq -r '.cells[]|select(.id=="PRODUCT_PROJECTION")|.activity' "$denominator")
+          jq --arg activity "$own_unknown_activity" '
+            map(if .selector.name==$activity then
+              .decision="UNKNOWN" |
+              .occurrences=0 |
+              .claim={state:"UNKNOWN",occurrences:0,stage:"CORE_META_ACTIVITY",step:"RESOLVE_ACTIVITY_CARDINALITY",reason:"ACTIVITY_NOT_FOUND",unknown_class:"DIRECT_MISSING",next_operation:"PROVIDE_CORE_ACTIVITY_RESOLUTION_RECEIPT",blocked_by:[]}
+            else . end)
+          ' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/own-unknown-core-receipts.json"
+          jq '.meta.activities_observed=0' "$WORK_DIR/base-facts.json" > "$WORK_DIR/own-unknown-predecessor-refuted-facts.json"
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/own-unknown-core-receipts.json" "$WORK_DIR/own-unknown-predecessor-refuted-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/own-unknown-predecessor-refuted-report.json" "$SUBJECT_SHA"
+          jq -e '
+            .decision=="FAIL_CLOSED" and .claim.state=="REFUTED" and
+            ([.cells[]|select(.id=="PRODUCT_PROJECTION" and .state=="REFUTED" and .reason=="DEPENDENCY_REFUTED" and .blocked_by==["META_ACTIVITY_AUTHORITY"])]|length)==1
+          ' "$WORK_DIR/own-unknown-predecessor-refuted-report.json" >/dev/null
+
+          jq '.immutable.core_identity_verified=false' "$WORK_DIR/base-facts.json" > "$WORK_DIR/multiple-refuted-facts.json"
+          bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/core-receipts.json" "$WORK_DIR/multiple-refuted-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/multiple-refuted-report.json" "$SUBJECT_SHA"
+          jq -e '
+            .decision=="FAIL_CLOSED" and
+            .claim=={state:"REFUTED",occurrences:0,stage:"DEPENDENCY_RESOLUTION",step:"BLOCKED_BY_REFUTED_PREDECESSOR",reason:"DEPENDENCY_REFUTED",unknown_class:null,next_operation:"RESTORE_REFUTED_PREDECESSOR",blocked_by:["META_ACTIVITY_AUTHORITY"]}
+          ' "$WORK_DIR/multiple-refuted-report.json" >/dev/null
+
           jq '.[0].decision="UNKNOWN"' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/malformed-unknown-core-receipts.json"
           bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/malformed-unknown-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/malformed-unknown-report.json" "$SUBJECT_SHA"
           malformed_decision=$(jq -r '.decision' "$WORK_DIR/malformed-unknown-report.json")
           malformed_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/malformed-unknown-report.json")
           malformed_reason=$(jq -r '.claim.reason' "$WORK_DIR/malformed-unknown-report.json")
           malformed_report_sha=$(sha256sum "$WORK_DIR/malformed-unknown-report.json" | awk '{print $1}')
-          jq -e '.decision=="FAIL_CLOSED" and .summary.cells_unknown==0 and .summary.cells_refuted>0 and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/malformed-unknown-report.json" >/dev/null
+          jq -e '.decision=="FAIL_CLOSED" and .summary.cells_unknown==0 and .summary.cells_refuted>0 and .claim.state=="REFUTED" and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/malformed-unknown-report.json" >/dev/null
 
           jq '.[0].decision="FIXED_POINT"' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/fixed-point-core-receipts.json"
           bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/fixed-point-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/fixed-point-report.json" "$SUBJECT_SHA"
@@ -280,7 +302,7 @@ jobs:
           fixed_point_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/fixed-point-report.json")
           fixed_point_reason=$(jq -r '.claim.reason' "$WORK_DIR/fixed-point-report.json")
           fixed_point_report_sha=$(sha256sum "$WORK_DIR/fixed-point-report.json" | awk '{print $1}')
-          jq -e --argjson expected_cells "$expected_cells" '.decision=="FAIL_CLOSED" and .summary.cells_closed==0 and .summary.cells_unknown==0 and .summary.cells_refuted==$expected_cells and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/fixed-point-report.json" >/dev/null
+          jq -e --argjson expected_cells "$expected_cells" '.decision=="FAIL_CLOSED" and .summary.cells_closed==0 and .summary.cells_unknown==0 and .summary.cells_refuted==$expected_cells and .claim.state=="REFUTED" and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/fixed-point-report.json" >/dev/null
 
           refuted_paths=$(jq -n --arg malformed "$malformed_decision" --arg fixed_point "$fixed_point_decision" 'if $malformed=="FAIL_CLOSED" and $fixed_point=="FAIL_CLOSED" then 1 else 0 end')
           test "$refuted_paths" -eq "$expected_refuted_paths"
@@ -297,7 +319,7 @@ jobs:
           unknown_dependency=$(jq '[.cells[]|select(.state=="UNKNOWN" and .unknown_class=="DEPENDENCY_BLOCKED")]|length' "$WORK_DIR/unknown-report.json")
           unknown_field_count=$(jq '([.cells[]|select(.state=="UNKNOWN")][0]//{}) as $sample | ["stage","step","reason","unknown_class","next_operation","blocked_by"] | map(. as $key | select($sample|has($key))) | length' "$WORK_DIR/unknown-report.json")
           unknown_all_six=$(jq -r --argjson fields "$expected_unknown_fields" '(([.cells[]|select(.state=="UNKNOWN")][0]//{}) as $sample | (["stage","step","reason","unknown_class","next_operation","blocked_by"] | map(. as $key | select($sample|has($key))) | length)==$fields)' "$WORK_DIR/unknown-report.json")
-          jq -e --arg expected_decision "RELEASED_DOMAIN_ENVELOPE_V2_UNKNOWN" --argjson expected_cases "$expected_unknown_cases" --argjson expected_fields "$expected_unknown_fields" --argjson expected_direct "$expected_unknown_direct" --argjson expected_dependency "$expected_unknown_dependency" --argjson cells "$unknown_cells" --argjson direct "$unknown_direct" --argjson dependency "$unknown_dependency" --argjson fields "$unknown_field_count" --argjson all_six "$unknown_all_six" '.decision==$expected_decision and $cells==$expected_cases and $direct==$expected_direct and $dependency==$expected_dependency and $fields==$expected_fields and $all_six==true and .summary.cells_unknown==$cells and .summary.cells_refuted==0 and all(.cells[]; (.state!="UNKNOWN") or (.occurrences==0 and (.stage|type)=="string" and (.step|type)=="string" and (.reason|type)=="string" and (.unknown_class|IN("DIRECT_MISSING","DEPENDENCY_BLOCKED")) and (.next_operation|type)=="string" and (.blocked_by|type)=="array" and ((.unknown_class=="DIRECT_MISSING" and .reason=="ACTIVITY_NOT_FOUND" and (.blocked_by|length)==0) or (.unknown_class=="DEPENDENCY_BLOCKED" and .reason=="DEPENDENCY_BLOCKED" and (.blocked_by|length)>0))))' "$WORK_DIR/unknown-report.json" >/dev/null
+          jq -e --arg expected_decision "RELEASED_DOMAIN_ENVELOPE_V2_UNKNOWN" --argjson expected_cases "$expected_unknown_cases" --argjson expected_fields "$expected_unknown_fields" --argjson expected_direct "$expected_unknown_direct" --argjson expected_dependency "$expected_unknown_dependency" --argjson cells "$unknown_cells" --argjson direct "$unknown_direct" --argjson dependency "$unknown_dependency" --argjson fields "$unknown_field_count" --argjson all_six "$unknown_all_six" '.decision==$expected_decision and .claim.state=="UNKNOWN" and .claim.unknown_class=="DIRECT_MISSING" and .claim.blocked_by==[] and $cells==$expected_cases and $direct==$expected_direct and $dependency==$expected_dependency and $fields==$expected_fields and $all_six==true and .summary.cells_unknown==$cells and .summary.cells_refuted==0 and ([.cells[]|select(.state=="UNKNOWN")|{id,unknown_class,blocked_by}]|sort_by(.id))==[{id:"READ_ONLY_CONFORMANCE",unknown_class:"DIRECT_MISSING",blocked_by:[]},{id:"UNKNOWN_CAUSALITY",unknown_class:"DEPENDENCY_BLOCKED",blocked_by:["READ_ONLY_CONFORMANCE"]}] and all(.cells[]; (.state!="UNKNOWN") or (.occurrences==0 and (.stage|type)=="string" and (.step|type)=="string" and (.reason|type)=="string" and (.unknown_class|IN("DIRECT_MISSING","DEPENDENCY_BLOCKED")) and (.next_operation|type)=="string" and (.blocked_by|type)=="array" and ((.unknown_class=="DIRECT_MISSING" and .reason=="ACTIVITY_NOT_FOUND" and (.blocked_by|length)==0) or (.unknown_class=="DEPENDENCY_BLOCKED" and .reason=="DEPENDENCY_BLOCKED" and (.blocked_by|length)>0))))' "$WORK_DIR/unknown-report.json" >/dev/null
 
           unknown_report_sha=$(sha256sum "$WORK_DIR/unknown-report.json" | awk '{print $1}')
           jq --arg unknown_decision "$unknown_decision" --argjson unknown_cells "$unknown_cells" --argjson unknown_direct "$unknown_direct" --argjson unknown_dependency "$unknown_dependency" --argjson unknown_field_count "$unknown_field_count" --argjson unknown_all_six "$unknown_all_six" --arg unknown_report_sha "$unknown_report_sha" '.unknown_coordinates={report_decision:$unknown_decision,cells:$unknown_cells,direct_missing:$unknown_direct,dependency_blocked:$unknown_dependency,six_fields:$unknown_field_count,all_six_fields:$unknown_all_six,report_sha256:$unknown_report_sha}|.source_artifacts.unknown_report_sha256=$unknown_report_sha|.user_paths.unknown=$unknown_cells' "$WORK_DIR/adversarial-facts.json" > "$WORK_DIR/facts.json"
@@ -314,7 +336,7 @@ jobs:
             exit 1
           fi
           jq -e --argjson expected_cells "$expected_cells" --argjson expected_projection "$expected_projection" --argjson expected_files "$expected_files" --argjson expected_relations "$expected_relations" --argjson expected_checks "$expected_checks" --argjson expected_source_replay "$expected_source_replay" --argjson expected_file_replay "$expected_file_replay" --argjson expected_unknown_cases "$expected_unknown_cases" --argjson expected_unknown_direct "$expected_unknown_direct" --argjson expected_unknown_dependency "$expected_unknown_dependency" --argjson expected_refuted_reports "$expected_refuted_reports" --argjson expected_normal_paths "$expected_normal_paths" --argjson expected_refuted_paths "$expected_refuted_paths" --argjson expected_unknown_fields "$expected_unknown_fields" --argjson expected_source_artifacts "$expected_source_artifacts" '
-            .decision=="RELEASED_DOMAIN_ENVELOPE_V2_CANDIDATE_CLOSED" and
+            .decision=="RELEASED_DOMAIN_ENVELOPE_V2_CANDIDATE_CLOSED" and .claim.state=="CLOSED" and .claim.unknown_class==null and .claim.blocked_by==[] and
             .summary.cells_total==$expected_cells and .summary.cells_closed==$expected_cells and .summary.cells_unknown==0 and .summary.cells_refuted==0 and
             .summary.normal_cases==$expected_normal_paths and .summary.unknown_cases==0 and .summary.refuted_cases==0 and
             .summary.meta_activities_observed==$expected_cells and .summary.meta_activities_total==$expected_cells and
@@ -328,7 +350,7 @@ jobs:
             .adversarial.reports_observed==$expected_refuted_reports and .adversarial.malformed.decision=="FAIL_CLOSED" and .adversarial.fixed_point.decision=="FAIL_CLOSED" and .adversarial.malformed.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION" and .adversarial.fixed_point.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION" and
             .adoption.released_domain_adoption=={observed:0,total:1,state:"UNKNOWN"} and .adoption.external_utility.observed==0 and .adoption.external_utility.total==1 and .adoption.external_utility.state=="UNKNOWN" and
             .authority.envelope_semantic_authority=="INTERCHANGE_SPECIFICATION" and .authority.projection_implementation_owner=="LOCAL_LEDGER" and
-            .authority.repository_writes==0 and .authority.local_test_executions==0 and .authority.cross_project_required_gates==0 and
+            .authority.repository_writes==0 and .authority.local_test_executions==0 and .authority.cross_project_required_gates==0 and .metrics.wall_ms>0 and .metrics.peak_rss_kib>0 and
             ([.proof_counts[]|select(.observed==4 and .total==4)]|length)==3 and ([.indicator_counts[]|select(.observed==4 and .total==4)]|length)==3
           ' "$WORK_DIR/adoption-report.json" >/dev/null
 
@@ -362,6 +384,11 @@ jobs:
             ${{ env.WORK_DIR }}/swapped-authority-project.json
             ${{ env.WORK_DIR }}/swapped-authority-facts.json
             ${{ env.WORK_DIR }}/swapped-authority-report.json
+            ${{ env.WORK_DIR }}/own-unknown-core-receipts.json
+            ${{ env.WORK_DIR }}/own-unknown-predecessor-refuted-facts.json
+            ${{ env.WORK_DIR }}/own-unknown-predecessor-refuted-report.json
+            ${{ env.WORK_DIR }}/multiple-refuted-facts.json
+            ${{ env.WORK_DIR }}/multiple-refuted-report.json
             ${{ env.WORK_DIR }}/adversarial-facts.json
             ${{ env.WORK_DIR }}/facts.json
             ${{ env.WORK_DIR }}/final-facts.json
