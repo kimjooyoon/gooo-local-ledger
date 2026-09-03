@@ -292,17 +292,17 @@ jobs:
           bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/malformed-unknown-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/malformed-unknown-report.json" "$SUBJECT_SHA"
           malformed_decision=$(jq -r '.decision' "$WORK_DIR/malformed-unknown-report.json")
           malformed_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/malformed-unknown-report.json")
-          malformed_reason=$(jq -r '.claim.reason' "$WORK_DIR/malformed-unknown-report.json")
+          malformed_reason=$(jq -r '.cells[]|select(.id=="CORE_RELEASE")|.reason' "$WORK_DIR/malformed-unknown-report.json")
           malformed_report_sha=$(sha256sum "$WORK_DIR/malformed-unknown-report.json" | awk '{print $1}')
-          jq -e '.decision=="FAIL_CLOSED" and .summary.cells_unknown==0 and .summary.cells_refuted>0 and .claim.state=="REFUTED" and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/malformed-unknown-report.json" >/dev/null
+          jq -e '.decision=="FAIL_CLOSED" and .summary.cells_unknown==0 and .summary.cells_refuted>0 and .claim.state=="REFUTED" and ([.cells[]|select(.id=="CORE_RELEASE" and .state=="REFUTED" and .reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION")]|length)==1' "$WORK_DIR/malformed-unknown-report.json" >/dev/null
 
           jq '.[0].decision="FIXED_POINT"' "$WORK_DIR/core-receipts.json" > "$WORK_DIR/fixed-point-core-receipts.json"
           bash scripts/evaluate-released-domain-envelope-v2-adoption.sh "$GITHUB_WORKSPACE" "$WORK_DIR/fixed-point-core-receipts.json" "$WORK_DIR/base-facts.json" "$WORK_DIR/runtime.json" "$WORK_DIR/inventory.json" "$WORK_DIR/fixed-point-report.json" "$SUBJECT_SHA"
           fixed_point_decision=$(jq -r '.decision' "$WORK_DIR/fixed-point-report.json")
           fixed_point_refuted_cells=$(jq -r '.summary.cells_refuted' "$WORK_DIR/fixed-point-report.json")
-          fixed_point_reason=$(jq -r '.claim.reason' "$WORK_DIR/fixed-point-report.json")
+          fixed_point_reason=$(jq -r '.cells[]|select(.id=="CORE_RELEASE")|.reason' "$WORK_DIR/fixed-point-report.json")
           fixed_point_report_sha=$(sha256sum "$WORK_DIR/fixed-point-report.json" | awk '{print $1}')
-          jq -e --argjson expected_cells "$expected_cells" '.decision=="FAIL_CLOSED" and .summary.cells_closed==0 and .summary.cells_unknown==0 and .summary.cells_refuted==$expected_cells and .claim.state=="REFUTED" and .claim.reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION"' "$WORK_DIR/fixed-point-report.json" >/dev/null
+          jq -e --argjson expected_cells "$expected_cells" '.decision=="FAIL_CLOSED" and .summary.cells_closed==0 and .summary.cells_unknown==0 and .summary.cells_refuted==$expected_cells and .claim.state=="REFUTED" and ([.cells[]|select(.id=="CORE_RELEASE" and .state=="REFUTED" and .reason=="UNRECOGNIZED_CORE_ACTIVITY_RESOLUTION_DECISION")]|length)==1' "$WORK_DIR/fixed-point-report.json" >/dev/null
 
           refuted_paths=$(jq -n --arg malformed "$malformed_decision" --arg fixed_point "$fixed_point_decision" 'if $malformed=="FAIL_CLOSED" and $fixed_point=="FAIL_CLOSED" then 1 else 0 end')
           test "$refuted_paths" -eq "$expected_refuted_paths"
